@@ -146,8 +146,3 @@ dotnet run
 API available at: `http://localhost:5097`  
 Swagger UI at: `http://localhost:5097/swagger`
 
-## Contributors
-- Roa, Sharla M. - Back End Developer
-- Momo, Stelah Marish D. - Documentation
-- Monsuller, Ronaly S. - Front End Developer
-- Bulso, Daniel C. - Mobile Developer
