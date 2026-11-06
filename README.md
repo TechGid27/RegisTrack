@@ -2,6 +2,25 @@
 
 RegisTrack is a full-stack student document request and tracking system. It provides role-based access for students, staff, and administrators across a React web application, a Flutter mobile application, and an ASP.NET Core backend API.
 
+## Clone the Project
+
+Clone the complete RegisTrack repository from GitHub:
+
+```bash
+git clone https://github.com/TechGid27/RegisTrack.git
+cd RegisTrack
+git checkout main
+```
+
+This repository contains all three applications in one workspace:
+
+```text
+RegisTrack/
+├── Frontend/             # React and Vite web application
+├── Mobile_1/             # Flutter mobile application
+└── Registrack.api/       # ASP.NET Core backend API
+```
+
 ## Components
 
 | Component | Technology | Responsibility | Documentation |
