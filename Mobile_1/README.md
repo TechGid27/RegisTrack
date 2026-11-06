@@ -1,17 +1,63 @@
-# mobile_app
+# RegisTrack Mobile
 
-A new Flutter project.
+Flutter mobile application for students, staff, and administrators of the RegisTrack document request system.
 
-## Getting Started
+## Backend Host
 
-This project is a starting point for a Flutter application.
+API settings are defined in `lib/services/api_config.dart`.
 
-A few resources to get you started if this is your first Flutter project:
+The default host is:
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+```text
+http://localhost:5097/api
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Update this file depending on the test device:
+
+| Environment | API host example |
+|---|---|
+| Android emulator | `http://10.0.2.2:5097/api` |
+| Windows desktop or iOS simulator | `http://localhost:5097/api` |
+| Physical device on the same network | `http://<PC-LAN-IP>:5097/api` |
+
+`localhost` refers to the mobile device when used on an emulator or physical phone. Use the computer's actual LAN IPv4 address for physical devices and make sure the API accepts LAN connections through the Windows firewall.
+
+## Prerequisites
+
+- Flutter SDK with Dart 3.11.1 or newer
+- The RegisTrack API running on port `5097`
+- Android Studio, Xcode, or another configured Flutter target
+
+## Setup
+
+```bash
+flutter pub get
+flutter run
+```
+
+For a specific target:
+
+```bash
+flutter run -d chrome
+flutter run -d windows
+flutter run -d android
+```
+
+## Main Features
+
+- Registration, login, forgot password, and OTP verification
+- Document request submission and tracking
+- Document types and requirements
+- Announcements and public document lookup
+- Student, staff, and administrator dashboards
+- SignalR request notifications
+
+## Main Technologies
+
+- Flutter and Dart
+- HTTP package
+- Shared Preferences
+- File Picker
+- SignalR NetCore
+
+Assets are stored in `assets/images/` and registered in `pubspec.yaml`.

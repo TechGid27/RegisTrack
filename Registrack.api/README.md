@@ -1,17 +1,35 @@
 # RegisTrack Backend API
 
-## Overview
-RegisTrack is a Student Document Request & Tracking System backend API built with ASP.NET Core 10.0. Students submit document requests, admins process and manage them.
+ASP.NET Core 10 backend for the RegisTrack student document request and tracking system.
+
+## Server Host
+
+The default development host is:
+
+```text
+http://localhost:5097
+```
+
+- Swagger UI: `http://localhost:5097/swagger`
+- REST API prefix: `http://localhost:5097/api`
+- SignalR hub: `http://localhost:5097/hubs/requests`
+- Uploaded files: `http://localhost:5097/uploads`
+
+The HTTP host and port are configured in `Properties/launchSettings.json`. The web host currently uses `ASPNETCORE_ENVIRONMENT=Development` for Swagger and developer error output.
 
 ## Technology Stack
-- **Framework**: ASP.NET Core 10.0
-- **Database**: SQL Server with Entity Framework Core
-- **Auth**: JWT Bearer Authentication
-- **Password Hashing**: BCrypt
+
+- ASP.NET Core 10
+- Entity Framework Core and SQL Server
+- JWT bearer authentication
+- BCrypt password hashing
+- MailKit SMTP email delivery
+- ASP.NET Core SignalR
 
 ## Roles
-- `Student` — registers, submits and tracks their own document requests
-- `Admin` — manages everything (document types, requirements, announcements, processes requests)
+
+- `Student`: submit, track, and manage own document requests
+- `Admin` and `Staff`: process requests and maintain system data
 
 ## Project Structure
 ```
