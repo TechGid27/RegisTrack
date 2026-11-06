@@ -1,0 +1,66 @@
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { metaService } from '../api/MetaService';
+
+const MetaContext = createContext();
+
+export const MetaProvider = ({ children }) => {
+  const [documentTypes, setDocumentTypes] = useState([]);
+  const [requirements, setRequirements] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const loadMetadata = useCallback(async () => {
+    console.log('🔄 MetaContext: Starting to load metadata...');
+    setLoading(true);
+    try {
+      const [typesData, reqsData] = await Promise.all([
+        metaService.getTypes(),
+        metaService.getRequirements(),
+      ]);
+      
+      setDocumentTypes(typesData);
+      setRequirements(reqsData);
+      setError(null);
+    } catch (err) {
+      console.error("❌ MetaContext: Failed to fetch metadata:", err);
+      setError("Dili makuha ang data gikan sa server.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadMetadata();
+    
+    // Listen for document type changes from admin
+    const handleDocumentTypeChange = () => {
+      loadMetadata();
+    };
+    
+    window.addEventListener('documentTypeChanged', handleDocumentTypeChange);
+    
+    return () => {
+      window.removeEventListener('documentTypeChanged', handleDocumentTypeChange);
+    };
+  }, [loadMetadata]);
+
+  return (
+    <MetaContext.Provider value={{ 
+      documentTypes, 
+      requirements, 
+      loading, 
+      error, 
+      refreshMetadata: loadMetadata 
+    }}>
+      {children}
+    </MetaContext.Provider>
+  );
+};
+
+export const UseMeta = () => {
+  const context = useContext(MetaContext);
+  if (!context) {
+    throw new Error('useMeta must be used within a MetaProvider');
+  }
+  return context;
+};

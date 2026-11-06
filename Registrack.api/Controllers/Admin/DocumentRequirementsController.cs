@@ -1,0 +1,282 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.SignalR;
+using Doctrack_backend_api.Data;
+using Doctrack_backend_api.Models;
+using Doctrack_backend_api.DTOs;
+using Doctrack_backend_api.Hubs;
+
+namespace Doctrack_backend_api.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class DocumentRequirementsController : ControllerBase
+{
+    private readonly ApplicationDbContext _context;
+    private readonly ILogger<DocumentRequirementsController> _logger;
+    private readonly IHubContext<RequestHub> _hubContext;
+
+    public DocumentRequirementsController(ApplicationDbContext context, ILogger<DocumentRequirementsController> logger, IHubContext<RequestHub> hubContext)
+    {
+        _context = context;
+        _logger = logger;
+        _hubContext = hubContext;
+    }
+
+    /// <summary>
+    /// GET: api/DocumentRequirements/type/{typeId} - Get requirements for a specific document type (mobile-friendly route)
+    /// </summary>
+    [HttpGet("type/{typeId}")]
+    public async Task<ActionResult<IEnumerable<DocumentRequirementResponseDto>>> GetByDocumentType(int typeId)
+    {
+        try
+        {
+            var requirements = await _context.DocumentRequirements
+                .Include(dr => dr.DocumentType)
+                .Where(dr => dr.DocumentTypeId == typeId)
+                .OrderBy(dr => dr.DisplayOrder)
+                .Select(dr => new DocumentRequirementResponseDto
+                {
+                    Id = dr.Id,
+                    DocumentTypeId = dr.DocumentTypeId,
+                    DocumentTypeName = dr.DocumentType.Name,
+                    RequirementName = dr.RequirementName,
+                    Description = dr.Description,
+                    IsMandatory = dr.IsMandatory,
+                    DisplayOrder = dr.DisplayOrder,
+                    CreatedAt = dr.CreatedAt
+                })
+                .ToListAsync();
+
+            return Ok(requirements);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving requirements for document type {TypeId}", typeId);
+            return StatusCode(500, new { message = "An error occurred while retrieving document requirements" });
+        }
+    }
+
+    /// <summary>
+    /// GET: api/DocumentRequirements - Retrieve all document requirements
+    /// </summary>
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<DocumentRequirementResponseDto>>> GetDocumentRequirements(
+        [FromQuery] int? documentTypeId = null)
+    {
+        try
+        {
+            var query = _context.DocumentRequirements
+                .Include(dr => dr.DocumentType)
+                .AsQueryable();
+
+            if (documentTypeId.HasValue)
+            {
+                query = query.Where(dr => dr.DocumentTypeId == documentTypeId.Value);
+            }
+
+            var requirements = await query
+                .OrderBy(dr => dr.DocumentTypeId)
+                .ThenBy(dr => dr.DisplayOrder)
+                .Select(dr => new DocumentRequirementResponseDto
+                {
+                    Id = dr.Id,
+                    DocumentTypeId = dr.DocumentTypeId,
+                    DocumentTypeName = dr.DocumentType.Name,
+                    RequirementName = dr.RequirementName,
+                    Description = dr.Description,
+                    IsMandatory = dr.IsMandatory,
+                    DisplayOrder = dr.DisplayOrder,
+                    CreatedAt = dr.CreatedAt
+                })
+                .ToListAsync();
+
+            return Ok(requirements);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving document requirements");
+            return StatusCode(500, new { message = "An error occurred while retrieving document requirements" });
+        }
+    }
+
+    /// <summary>
+    /// GET: api/DocumentRequirements/{id} - Retrieve a specific document requirement
+    /// </summary>
+    [HttpGet("{id}")]
+    public async Task<ActionResult<DocumentRequirementResponseDto>> GetDocumentRequirement(int id)
+    {
+        try
+        {
+            var requirement = await _context.DocumentRequirements
+                .Include(dr => dr.DocumentType)
+                .Where(dr => dr.Id == id)
+                .Select(dr => new DocumentRequirementResponseDto
+                {
+                    Id = dr.Id,
+                    DocumentTypeId = dr.DocumentTypeId,
+                    DocumentTypeName = dr.DocumentType.Name,
+                    RequirementName = dr.RequirementName,
+                    Description = dr.Description,
+                    IsMandatory = dr.IsMandatory,
+                    DisplayOrder = dr.DisplayOrder,
+                    CreatedAt = dr.CreatedAt
+                })
+                .FirstOrDefaultAsync();
+
+            if (requirement == null)
+            {
+                return NotFound(new { message = $"Document requirement with ID {id} not found" });
+            }
+
+            return Ok(requirement);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving document requirement {Id}", id);
+            return StatusCode(500, new { message = "An error occurred while retrieving the document requirement" });
+        }
+    }
+
+    /// <summary>
+    /// POST: api/DocumentRequirements - Create a new document requirement (Admin only)
+    /// </summary>
+    [HttpPost]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult<DocumentRequirementResponseDto>> CreateDocumentRequirement(CreateDocumentRequirementDto dto)
+    {
+        try
+        {
+            // Validate document type exists
+            var documentTypeExists = await _context.DocumentTypes.AnyAsync(dt => dt.Id == dto.DocumentTypeId);
+            if (!documentTypeExists)
+            {
+                return BadRequest(new { message = "Invalid document type" });
+            }
+
+            var requirement = new DocumentRequirement
+            {
+                DocumentTypeId = dto.DocumentTypeId,
+                RequirementName = dto.RequirementName,
+                Description = dto.Description ?? string.Empty,
+                IsMandatory = dto.IsMandatory,
+                DisplayOrder = dto.DisplayOrder,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.DocumentRequirements.Add(requirement);
+            await _context.SaveChangesAsync();
+
+            var createdRequirement = await _context.DocumentRequirements
+                .Include(dr => dr.DocumentType)
+                .Where(dr => dr.Id == requirement.Id)
+                .Select(dr => new DocumentRequirementResponseDto
+                {
+                    Id = dr.Id,
+                    DocumentTypeId = dr.DocumentTypeId,
+                    DocumentTypeName = dr.DocumentType.Name,
+                    RequirementName = dr.RequirementName,
+                    Description = dr.Description,
+                    IsMandatory = dr.IsMandatory,
+                    DisplayOrder = dr.DisplayOrder,
+                    CreatedAt = dr.CreatedAt
+                })
+                .FirstAsync();
+
+            // 🔥 REAL-TIME: Notify students of new requirement
+            await _hubContext.Clients.Group("students").SendAsync("RequirementUpdated", new
+            {
+                documentTypeId = requirement.DocumentTypeId,
+                action = "created"
+            });
+
+            return CreatedAtAction(nameof(GetDocumentRequirement), new { id = requirement.Id }, createdRequirement);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating document requirement");
+            return StatusCode(500, new { message = "An error occurred while creating the document requirement" });
+        }
+    }
+
+    /// <summary>
+    /// PUT: api/DocumentRequirements/{id} - Update a document requirement (Admin only)
+    /// </summary>
+    [HttpPut("{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> UpdateDocumentRequirement(int id, UpdateDocumentRequirementDto dto)
+    {
+        try
+        {
+            var requirement = await _context.DocumentRequirements.FindAsync(id);
+            if (requirement == null)
+            {
+                return NotFound(new { message = $"Document requirement with ID {id} not found" });
+            }
+
+            if (!string.IsNullOrEmpty(dto.RequirementName))
+            {
+                requirement.RequirementName = dto.RequirementName;
+            }
+
+            if (dto.Description != null)
+            {
+                requirement.Description = dto.Description;
+            }
+
+            if (dto.IsMandatory.HasValue)
+            {
+                requirement.IsMandatory = dto.IsMandatory.Value;
+            }
+
+            if (dto.DisplayOrder.HasValue)
+            {
+                requirement.DisplayOrder = dto.DisplayOrder.Value;
+            }
+
+            await _context.SaveChangesAsync();
+
+            // 🔥 REAL-TIME: Notify students of requirement update
+            await _hubContext.Clients.Group("students").SendAsync("RequirementUpdated", new
+            {
+                documentTypeId = requirement.DocumentTypeId,
+                action = "updated"
+            });
+
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating document requirement {Id}", id);
+            return StatusCode(500, new { message = "An error occurred while updating the document requirement" });
+        }
+    }
+
+    /// <summary>
+    /// DELETE: api/DocumentRequirements/{id} - Delete a document requirement (Admin only)
+    /// </summary>
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> DeleteDocumentRequirement(int id)
+    {
+        try
+        {
+            var requirement = await _context.DocumentRequirements.FindAsync(id);
+            if (requirement == null)
+            {
+                return NotFound(new { message = $"Document requirement with ID {id} not found" });
+            }
+
+            _context.DocumentRequirements.Remove(requirement);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting document requirement {Id}", id);
+            return StatusCode(500, new { message = "An error occurred while deleting the document requirement" });
+        }
+    }
+}

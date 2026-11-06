@@ -1,0 +1,25 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "ConnectionStrings": {
+  "DefaultConnection": "Server=localhost\\SQLEXPRESS;Database=DocTrackerDB;Trusted_Connection=True;TrustServerCertificate=True"
+  },
+  "Jwt": {
+    "Key": "REPLACE_WITH_A_LONG_RANDOM_SECRET",
+    "Issuer": "DoctrackAPI",
+    "Audience": "DoctrackClient"
+  },
+  "AllowedHosts": "*",
+  "Email": {
+    "SmtpHost": "smtp-relay.brevo.com",
+    "SmtpPort": 587,
+    "Username": "a81f69001@smtp-brevo.com",
+    "Password": "REPLACE_WITH_SMTP_PASSWORD",
+    "FromEmail": "gideonayao29@gmail.com",
+    "FromName": "DocTrack System"
+  }
+}
