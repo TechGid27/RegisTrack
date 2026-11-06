@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import {
-  Box, Container, Typography, Button, Grid, IconButton,
+  Box, Container, Typography, Button, IconButton,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField,
   Stack, InputAdornment, Card, CardContent, Divider, CircularProgress,
   FormControlLabel, Switch, Collapse, Alert
 } from '@mui/material';
+import { Grid } from '@mui/material';
 import { Formik, FastField } from 'formik';
 import * as Yup from 'yup';
 
@@ -123,7 +124,7 @@ function DocumentTypePage() {
         ) : (
           <Grid container spacing={3} alignItems="stretch">
             {documentTypes.map((doc) => (
-              <Grid item xs={12} sm={6} md={4} key={doc.id} sx={{ display: 'flex', width: '100%' }}>
+              <Grid size={{ xs: 12, sm: 6, md: 4 }} key={doc.id} sx={{ display: 'flex', width: '100%' }}>
                 <Card sx={{ 
                   display: 'flex', 
                   flexDirection: 'column', 

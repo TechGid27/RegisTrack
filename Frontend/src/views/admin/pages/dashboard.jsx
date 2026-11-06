@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo } from 'react';
 import { 
-  Box, Grid, Typography, Card, Stack, IconButton, 
+  Box, Typography, Card, Stack, IconButton,
   CircularProgress, Tooltip
 } from '@mui/material';
+import { Grid } from '@mui/material';
 
 // Icons
 import PendingActionsIcon from '@mui/icons-material/PendingActions';
@@ -57,7 +58,7 @@ export default function AdminDashboard() {
       {/* 2. STATS ROW */}
       <Grid container spacing={3} sx={{ mb: 6 }}>
         {dynamicStats.map((stat, i) => (
-          <Grid item xs={12} sm={6} md={2.4} key={i}>
+          <Grid size={{ xs: 12, sm: 6, md: 2.4 }} key={i}>
             <Card sx={{ p: 3, borderRadius: 5, boxShadow: '0 4px 20px rgba(0,0,0,0.02)', textAlign: 'center', border: '1px solid #f0f0f0' }}>
               <Typography variant="overline" color="text.secondary" fontWeight="700">{stat.label}</Typography>
               <Typography variant="h4" fontWeight="900" sx={{ my: 1, color: stat.color }}>
@@ -70,7 +71,7 @@ export default function AdminDashboard() {
 
       {/* 3. CRITICAL REQUESTS SECTION */}
       <Grid container spacing={4}>
-        <Grid item xs={12} width='100%'>
+        <Grid size={{ xs: 12 }} width='100%'>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, width: '100%', alignItems: 'center' }}>
             <Typography variant="h6" fontWeight="800" color="#1B254B">Critical Pending Requests</Typography>
             <Tooltip title="Refresh Data">

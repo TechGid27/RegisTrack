@@ -1,9 +1,10 @@
 import React from 'react';
 import { 
-  Box, Typography, Container, Grid, Card, 
+  Box, Typography, Container, Card,
   CardContent, Stack, Divider, List, ListItem, 
   ListItemIcon, ListItemText, Paper, CircularProgress 
 } from '@mui/material';
+import { Grid } from '@mui/material';
 
 // Icons
 import AssignmentIcon from '@mui/icons-material/Assignment';
@@ -48,7 +49,7 @@ const Requirements = () => {
               const typeRequirements = requirements.filter(req => req.documentTypeId === type.id);
 
               return (
-                <Grid item xs={12} md={4} key={type.id}>
+                <Grid size={{ xs: 12, md: 4 }} key={type.id}>
                   <Card sx={{ 
                     height: '100%', 
                     borderRadius: 5, 

@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo } from 'react';
 import {
-  Box, Container, Typography, Grid, Card, Stack, Avatar,
+  Box, Container, Typography, Card, Stack, Avatar,
   CircularProgress, Button, Chip, Divider
 } from '@mui/material';
+import { Grid } from '@mui/material';
 import PendingActionsIcon from '@mui/icons-material/PendingActions';
 import AutorenewIcon from '@mui/icons-material/Autorenew';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
@@ -101,7 +102,7 @@ export default function StaffDashboard() {
             { icon: <CheckCircleOutlineIcon />, label: 'Approved', value: stats.approved, color: '#10B981' },
             { icon: <DescriptionOutlinedIcon />, label: 'Completed', value: stats.completed, color: '#8B5CF6' },
           ].map((s) => (
-            <Grid item xs={6} md={3} key={s.label}>
+            <Grid size={{ xs: 6, md: 3 }} key={s.label}>
               <StatCard {...s} loading={loading} />
             </Grid>
           ))}
@@ -125,7 +126,7 @@ export default function StaffDashboard() {
               action: () => navigate('/announcements'),
             },
           ].map((item) => (
-            <Grid item xs={12} sm={6} key={item.title}>
+            <Grid size={{ xs: 12, sm: 6 }} key={item.title}>
               <Card elevation={0} sx={{
                 p: 3, borderRadius: '20px', border: '1px solid #f0f0f0', cursor: 'pointer',
                 transition: '0.3s', '&:hover': { boxShadow: '0 12px 30px rgba(0,0,0,0.06)', transform: 'translateY(-2px)' }

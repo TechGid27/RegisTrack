@@ -1,9 +1,10 @@
 import { 
   Box, Typography, Stack, TextField, Button, Container, 
-  Card, CardContent, Grid, 
+  Card, CardContent,
   Accordion, AccordionSummary, AccordionDetails, 
   Collapse, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Chip, CircularProgress 
 } from "@mui/material";
+import { Grid } from '@mui/material';
 import * as React from 'react';
 import { UseRequests } from '../../context/RequestContext'; // Siguroha husto ang path
 
@@ -110,7 +111,7 @@ export default function Home() {
       }}>
         <Container maxWidth="lg">
           <Grid container spacing={4} alignItems="center">
-            <Grid item xs={12} md={7}>
+            <Grid size={{ xs: 12, md: 7 }}>
               <Stack spacing={3}>
                 <Typography variant="overline" sx={{ fontWeight: 800, color: 'primary.main', letterSpacing: 2 }}>
                   Academic Transparency System
@@ -206,9 +207,9 @@ export default function Home() {
               <Typography variant="caption" color="text.secondary">{trackingData?.userEmail}</Typography>
             </Box>
             <Grid container spacing={1}>
-              <Grid item xs={12}><Box sx={{ p: 2, bgcolor: '#F8FAFF', borderRadius: 3, border: '1px solid #E0E4F0' }}><Typography variant="caption" color="text.secondary" fontWeight="700">DOCUMENT</Typography><Typography variant="body1" fontWeight="700">{trackingData?.documentTypeName}</Typography></Box></Grid>
-              <Grid item xs={6}><Box sx={{ p: 2, bgcolor: '#F8FAFF', borderRadius: 3, border: '1px solid #E0E4F0' }}><Typography variant="caption" color="text.secondary" fontWeight="700">QTY</Typography><Typography variant="body1" fontWeight="700">{trackingData?.quantity}</Typography></Box></Grid>
-              <Grid item xs={6}><Box sx={{ p: 2, bgcolor: '#F8FAFF', borderRadius: 3, border: '1px solid #E0E4F0' }}><Typography variant="caption" color="text.secondary" fontWeight="700">STATUS</Typography><Chip label={trackingData?.status} size="small" color="success" sx={{ fontWeight: 900 }} /></Box></Grid>
+              <Grid size={{ xs: 12 }}><Box sx={{ p: 2, bgcolor: '#F8FAFF', borderRadius: 3, border: '1px solid #E0E4F0' }}><Typography variant="caption" color="text.secondary" fontWeight="700">DOCUMENT</Typography><Typography variant="body1" fontWeight="700">{trackingData?.documentTypeName}</Typography></Box></Grid>
+              <Grid size={{ xs: 6 }}><Box sx={{ p: 2, bgcolor: '#F8FAFF', borderRadius: 3, border: '1px solid #E0E4F0' }}><Typography variant="caption" color="text.secondary" fontWeight="700">QTY</Typography><Typography variant="body1" fontWeight="700">{trackingData?.quantity}</Typography></Box></Grid>
+              <Grid size={{ xs: 6 }}><Box sx={{ p: 2, bgcolor: '#F8FAFF', borderRadius: 3, border: '1px solid #E0E4F0' }}><Typography variant="caption" color="text.secondary" fontWeight="700">STATUS</Typography><Chip label={trackingData?.status} size="small" color="success" sx={{ fontWeight: 900 }} /></Box></Grid>
             </Grid>
           </Stack>
         </DialogContent>

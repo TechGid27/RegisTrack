@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { 
-  Box, Grid, Paper, Typography, TextField, 
+  Box, Paper, Typography, TextField,
   Button, Link as MuiLink, 
   Stack, InputAdornment, IconButton, Alert 
 } from '@mui/material';
+import { Grid } from '@mui/material';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { UseAuth } from '../../context/AuthContext'; 
 import { Formik, FastField } from 'formik';
@@ -63,7 +64,7 @@ const Login = () => {
 
         {/* ── LEFT PANEL — hidden on mobile ── */}
         <Grid
-          item xs={false} md={7}
+          size={{ md: 7 }}
           sx={{
             display: { xs: 'none', md: 'flex' },
             flexDirection: 'column',
@@ -99,7 +100,7 @@ const Login = () => {
 
         {/* ── RIGHT PANEL — form ── */}
         <Grid
-          item xs={12} md={5}
+          size={{ xs: 12, md: 5 }}
           component={Paper}
           elevation={0}
           square

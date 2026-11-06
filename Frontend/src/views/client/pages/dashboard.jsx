@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { 
-  Box, Grid, Typography, Card, Chip, LinearProgress, 
+  Box, Typography, Card, Chip, LinearProgress,
   Button, Avatar, Stack, Container, Dialog, DialogContent, IconButton, Fade
 } from '@mui/material';
+import { Grid } from '@mui/material';
 import DescriptionIcon from '@mui/icons-material/Description';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AddIcon from '@mui/icons-material/Add';
@@ -69,7 +70,7 @@ export default function StudentDashboard() {
 
       <Grid container spacing={4}>
 
-        <Grid item xs={12} md={8} width="100%">
+        <Grid size={{ xs: 12, md: 8 }} width="100%">
           {/* SECTION: ACTIVE REQUESTS */}
 
           <Typography variant="h6" fontWeight="800" sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 1, color: '#1B254B' }}>
@@ -78,10 +79,10 @@ export default function StudentDashboard() {
 
           <Grid container spacing={3} sx={{ mb: 6 }}>
             {loading ? (
-              <Grid item xs={12}><Typography color="#707EAE">Fetching your requests...</Typography></Grid>
+              <Grid size={{ xs: 12 }}><Typography color="#707EAE">Fetching your requests...</Typography></Grid>
             ) : activeRequests.length > 0 ? (
               activeRequests.map((req) => (
-                <Grid item xs={12} sm={6} key={req.id}>
+                <Grid size={{ xs: 12, sm: 6 }} key={req.id}>
                   <Card elevation={0} sx={{ p: 3, borderRadius: '24px', width: '100%', border: '1px solid #f0f0f0', transition: '0.3s', '&:hover': { boxShadow: '0 20px 40px rgba(0,0,0,0.05)' } }}>
                     <Stack direction="row" justifyContent="space-between" sx={{ mb: 2 }}>
                       <Chip 
@@ -145,7 +146,7 @@ export default function StudentDashboard() {
                 </Grid>
               ))
             ) : (
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <Card elevation={0} sx={{ p: 4, borderRadius: '24px', border: '2px dashed #E0E5F2', textAlign: 'center' }}>
                   <Typography color="#A3AED0">You have no active document requests.</Typography>
                 </Card>
