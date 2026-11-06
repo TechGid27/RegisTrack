@@ -429,15 +429,15 @@ void showRequestDetailsDialog({
                           width: double.infinity,
                           child: FilledButton.icon(                   
                             onPressed: () {
-                                const baseUrl = ApiConfig.baseUrl2;
+                                final baseUrl = ApiConfig.baseUrl2;
 
                                 final fullUrl = documentUrl.startsWith('http')
                                     ? documentUrl
                                     : "$baseUrl$documentUrl";
 
-                                final anchor = html.AnchorElement(href: fullUrl)
-                                ..setAttribute("download", "") // forces download
-                                ..click();
+                                html.AnchorElement(href: fullUrl)
+                                  ..setAttribute("download", "") // forces download
+                                  ..click();
                               },
                               icon: const Icon(Icons.download_rounded),
                               label: const Text('Download Document'),
