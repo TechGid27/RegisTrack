@@ -1,11 +1,18 @@
-class ApiConfig {
-  // Use your PC's local IP so physical devices/emulators can reach the backend.
-  // Android emulator: use 10.0.2.2 instead of 192.168.x.x
-  // Physical device: use your PC's actual LAN IP (e.g. 192.168.1.5)
-  // static const String _host = '192.168.1.5:5097';
+import 'package:flutter/foundation.dart';
 
-  static const String baseUrl = 'http://localhost:5097/api';
-  static const String baseUrl2 = 'http://localhost:5097';
+class ApiConfig {
+  static const String _webDesktopHost = 'localhost:5097';
+  static const String _androidEmulatorHost = '10.0.2.2:5097';
+
+  static String get _host {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      return _androidEmulatorHost;
+    }
+    return _webDesktopHost;
+  }
+
+  static String get baseUrl => 'http://$_host/api';
+  static String get baseUrl2 => 'http://$_host';
 
 
   static const String announcements = '/Announcements';
