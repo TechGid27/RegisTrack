@@ -1,4 +1,13 @@
 # RegisTrack
+### Student Document Request & Tracking System
+
+<sub>**Client Preview Version | Under Active Development**</sub>
+
+RegisTrack is a full-stack student document request and tracking system designed to streamline document processing and communication between students, staff, and administrators.
+
+This version is presented as a **client preview** to demonstrate the system's current features, workflows, and overall functionality. The application is still undergoing revisions, improvements, and refinements based on testing and client feedback.
+
+Built with React, Flutter, and ASP.NET Core, RegisTrack provides a unified experience across web and mobile platforms.
 
 RegisTrack is a full-stack student document request and tracking system. It provides role-based access for students, staff, and administrators across a React web application, a Flutter mobile application, and an ASP.NET Core backend API.
 
