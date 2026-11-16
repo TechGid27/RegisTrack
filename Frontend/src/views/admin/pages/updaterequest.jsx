@@ -11,6 +11,7 @@ import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import CloseIcon from '@mui/icons-material/Close';
 import { UseRequests } from '../../../context/RequestContext';
+import { requestService } from '../../../api/RequestService';
 import { useParams, useNavigate } from 'react-router-dom';
 import { BASE_HOST } from '../../../api/Client';
 
@@ -27,6 +28,8 @@ function UpdateRequest({ idFromProp, onClose, isModal }) {
   const [notes, setNotes] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [receiptLoading, setReceiptLoading] = useState(false);
+  const [paymentChecking, setPaymentChecking] = useState(false);
 
   const steps = ['Request', 'InProcess', 'Approve', 'Receive', 'Download'];
 
@@ -47,6 +50,54 @@ function UpdateRequest({ idFromProp, onClose, isModal }) {
   }, [selectedRequest]);
 
   const isUploaded = !!(selectedRequest?.documentUrl);
+
+  const handleReceiptDownload = async () => {
+    setReceiptLoading(true);
+    setError('');
+    try {
+      const { blob, filename } = await requestService.downloadPaymentReceipt(selectedRequest.id);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      setError(err.message || 'Failed to download payment receipt.');
+    } finally {
+      setReceiptLoading(false);
+    }
+  };
+
+  const handlePaymentCheck = async () => {
+    setPaymentChecking(true);
+    setError('');
+    try {
+      await requestService.verifyPayment(selectedRequest.id);
+      await loadRequests();
+      setSuccess('Payment status refreshed.');
+    } catch (err) {
+      setError(err.message || 'Failed to refresh payment status.');
+    } finally {
+      setPaymentChecking(false);
+    }
+  };
+
+  const handleCodPaid = async () => {
+    setPaymentChecking(true);
+    setError('');
+    try {
+      await requestService.markCodPaid(selectedRequest.id);
+      await loadRequests();
+      setSuccess('COD payment marked as received.');
+    } catch (err) {
+      setError(err.message || 'Failed to update COD payment status.');
+    } finally {
+      setPaymentChecking(false);
+    }
+  };
 
   const availableOptions = useMemo(() => {
     if (!selectedRequest) return [];
@@ -136,6 +187,44 @@ function UpdateRequest({ idFromProp, onClose, isModal }) {
                 <Typography variant="caption" color="#707EAE" fontWeight="800">PURPOSE</Typography>
                 <Typography variant="body2" sx={{ mt: 0.5 }}>{selectedRequest.purpose || 'N/A'}</Typography>
               </Box>
+              <Divider />
+              <Box>
+                <Typography variant="caption" color="#707EAE" fontWeight="800">DELIVERY</Typography>
+                <Typography variant="body2">
+                  {selectedRequest.deliveryMethod === 'SoftcopyOnly' ? 'Softcopy only' : 'Pick up printed documents'}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="#707EAE" fontWeight="800">PAYMENT</Typography>
+                <Typography variant="body2">
+                  {selectedRequest.paymentMethod === 'PayMongo'
+                    ? 'PayMongo QR Ph'
+                    : selectedRequest.paymentMethod || 'N/A'}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Status: {selectedRequest.paymentStatus || 'N/A'}
+                </Typography>
+              </Box>
+              {['GCash', 'PayMongo'].includes(selectedRequest.paymentMethod) && selectedRequest.paymentStatus !== 'Paid' && (
+                <Button variant="outlined" onClick={handlePaymentCheck} disabled={paymentChecking}>
+                  {paymentChecking ? 'Checking...' : 'Refresh payment status'}
+                </Button>
+              )}
+              {selectedRequest.paymentMethod === 'COD' && selectedRequest.paymentStatus === 'PayOnDelivery' && (
+                <Button variant="outlined" onClick={handleCodPaid} disabled={paymentChecking}>
+                  {paymentChecking ? 'Updating...' : 'Mark COD as received'}
+                </Button>
+              )}
+              {selectedRequest.hasPaymentReceipt && (
+                <Button
+                  variant="outlined"
+                  startIcon={<FileDownloadIcon />}
+                  onClick={handleReceiptDownload}
+                  disabled={receiptLoading}
+                >
+                  {receiptLoading ? 'Downloading...' : 'Download GCash Receipt'}
+                </Button>
+              )}
             </Stack>
           </Card>
 

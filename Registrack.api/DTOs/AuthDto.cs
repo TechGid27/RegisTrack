@@ -18,8 +18,15 @@ public class RegisterDto
     public string Email { get; set; } = string.Empty;
     
     [Required(ErrorMessage = "Student ID is required")]
-    [StringLength(50, MinimumLength = 5, ErrorMessage = "Student ID must be between 5 and 50 characters")]
+    [RegularExpression(@"^\d{11}$", ErrorMessage = "Student number must be exactly 11 digits")]
     public string StudentId { get; set; } = string.Empty;
+
+    [Required]
+    [RegularExpression("^(SeniorHigh|College)$", ErrorMessage = "Academic level must be SeniorHigh or College")]
+    public string AcademicLevel { get; set; } = string.Empty;
+
+    [StringLength(100)]
+    public string? CourseProgram { get; set; }
     
     [Required(ErrorMessage = "Password is required")]
     [StringLength(100, MinimumLength = 8, ErrorMessage = "Password must be at least 8 characters")]

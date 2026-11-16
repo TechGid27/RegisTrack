@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Doctrack_backend_api</RootNamespace>
+    <UserSecretsId>RegisTrack-Backend-LocalSecrets</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

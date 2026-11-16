@@ -25,6 +25,7 @@ The HTTP host and port are configured in `Properties/launchSettings.json`. The w
 - BCrypt password hashing
 - MailKit SMTP email delivery
 - ASP.NET Core SignalR
+- PayMongo Hosted Checkout for QR Ph
 
 ## Roles
 
@@ -67,6 +68,8 @@ Doctrack-backend-api/
 | GET | `/api/DocumentRequests/{id}` | Authenticated |
 | GET | `/api/DocumentRequests/reference/{ref}` | Public |
 | POST | `/api/DocumentRequests` | Student |
+| POST | `/api/DocumentRequests/{id}/checkout` | Student |
+| POST | `/api/DocumentRequests/{id}/verify-payment` | Student, Admin, Staff |
 | PUT | `/api/DocumentRequests/{id}` | Admin |
 | DELETE | `/api/DocumentRequests/{id}` | Student, Admin |
 | POST | `/api/DocumentRequests/{id}/upload` | Admin |
@@ -138,7 +141,15 @@ Request → InProcess → Approve → Receive → Download
 dotnet ef database update
 ```
 
-3. **Run the application**:
+3. **Configure PayMongo test mode** using local .NET user secrets. Do not put keys in source files or the frontend:
+```bash
+dotnet user-secrets set "PayMongo:SecretKey" "<your-sk_test_key>"
+```
+
+Set `Frontend:BaseUrl` to the web app URL in local configuration if it differs from `http://localhost:5173`. Development requires an `sk_test_` key. Online checkout redirects to PayMongo's QR Ph checkout; the API verifies the resulting payment with PayMongo before marking the request paid. COD remains an offline cash payment. PayMongo warns that QR Ph codes generated in test mode may process a real transaction if scanned, so use PayMongo's simulator if it is shown and do not scan test QR codes.
+
+
+4. **Run the application**:
 ```bash
 dotnet run
 ```

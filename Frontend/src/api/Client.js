@@ -49,7 +49,9 @@ export const request = async (endpoint, options = {}) => {
       errorMessage = errorData.title;
     }
 
-    throw new Error(errorMessage);
+    const error = new Error(errorMessage);
+    error.data = errorData;
+    throw error;
   }
 
   return response.status === 204 ? null : response.json();

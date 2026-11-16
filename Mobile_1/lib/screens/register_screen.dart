@@ -25,11 +25,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
   final _studentIdController = TextEditingController();
+  final _courseProgramController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
   String? _errorMessage;
+  String? _academicLevel;
   Timer? _errorTimer;
 
   // Constants for performance and clean look
@@ -42,6 +44,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _firstNameController.dispose();
     _lastNameController.dispose();
     _studentIdController.dispose();
+    _courseProgramController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -117,10 +120,40 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           const SizedBox(height: 16),
                           _buildInput(
                             controller: _studentIdController,
-                            label: 'Student ID Number',
+                            label: '11-Digit AMA Universal Student Number',
                             icon: Icons.numbers_rounded,
                             textInputAction: TextInputAction.next,
                           ),
+                          const Padding(
+                            padding: EdgeInsets.only(top: 6),
+                            child: Text(
+                              'Enter your AMA-assigned number: first 2 digits are the profile year, then 00, then your 7-digit registration number.',
+                              style: TextStyle(color: secondaryText, fontSize: 12),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          DropdownButtonFormField<String>(
+                            value: _academicLevel,
+                            decoration: const InputDecoration(
+                              labelText: 'Academic Level',
+                              prefixIcon: Icon(Icons.school_outlined),
+                            ),
+                            items: const [
+                              DropdownMenuItem(value: 'SeniorHigh', child: Text('Senior High School')),
+                              DropdownMenuItem(value: 'College', child: Text('College')),
+                            ],
+                            onChanged: (value) => setState(() => _academicLevel = value),
+                            validator: (value) => value == null ? 'Select your level' : null,
+                          ),
+                          if (_academicLevel == 'College') ...[
+                            const SizedBox(height: 16),
+                            _buildInput(
+                              controller: _courseProgramController,
+                              label: 'Course / Program',
+                              icon: Icons.menu_book_outlined,
+                              textInputAction: TextInputAction.next,
+                            ),
+                          ],
                           const SizedBox(height: 16),
 
                           // Password field with listener
@@ -217,6 +250,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
       validator: (val) {
         if (val == null || val.isEmpty) return 'Required';
+        if (label == '11-Digit AMA Universal Student Number' &&
+            !RegExp(r'^\d{11}$').hasMatch(val.trim())) {
+          return 'Must be exactly 11 digits';
+        }
         if (label == 'Institutional Email') {
           final gmailRegex = RegExp(r'^[a-zA-Z0-9._%+\-]+@gmail\.com$');
           if (!gmailRegex.hasMatch(val.trim())) return 'Must be a valid Gmail address (@gmail.com)';
@@ -290,6 +327,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       'lastName': _lastNameController.text.trim(),
       'email': _emailController.text.trim(),
       'studentId': _studentIdController.text.trim(),
+      'academicLevel': _academicLevel,
+      'courseProgram': _academicLevel == 'College' ? _courseProgramController.text.trim() : null,
       'password': _passwordController.text,
       'confirmPassword': _confirmPasswordController.text.trim(),
     };

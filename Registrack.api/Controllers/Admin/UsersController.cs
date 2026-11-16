@@ -33,6 +33,8 @@ public class UsersController : ControllerBase
                 StudentId = u.StudentId,
                 Role = u.Role,
                 Department = u.Department,
+                AcademicLevel = u.AcademicLevel,
+                CourseProgram = u.CourseProgram,
                 IsActive = u.IsActive,
                 CreatedAt = u.CreatedAt
             })
@@ -61,6 +63,8 @@ public class UsersController : ControllerBase
                 StudentId = u.StudentId,
                 Role = u.Role,
                 Department = u.Department,
+                AcademicLevel = u.AcademicLevel,
+                CourseProgram = u.CourseProgram,
                 IsActive = u.IsActive,
                 CreatedAt = u.CreatedAt
             })
@@ -111,6 +115,8 @@ public class UsersController : ControllerBase
             StudentId = user.StudentId,
             Role = user.Role,
             Department = user.Department,
+            AcademicLevel = user.AcademicLevel,
+            CourseProgram = user.CourseProgram,
             IsActive = user.IsActive,
             CreatedAt = user.CreatedAt
         });
