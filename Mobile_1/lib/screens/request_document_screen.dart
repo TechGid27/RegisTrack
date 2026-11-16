@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../theme/app_colors.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
@@ -29,7 +28,6 @@ class _RequestDocumentScreenState extends State<RequestDocumentScreen> {
   int? _selectedDocumentTypeId;
   String? _selectedPurpose;
   String? _selectedDeliveryMethod;
-  String? _selectedPaymentMethod;
   final _purposeOtherController = TextEditingController();
   final _copiesController = TextEditingController(text: '1');
   final _notesController = TextEditingController();
@@ -126,43 +124,6 @@ class _RequestDocumentScreenState extends State<RequestDocumentScreen> {
                           ],
                           onChanged: (value) => setState(() => _selectedDeliveryMethod = value),
                           validator: (value) => value == null ? 'Choose a delivery method' : null,
-                        ),
-                        const SizedBox(height: 16),
-
-                        DropdownButtonFormField<String>(
-                          value: _selectedPaymentMethod,
-                          decoration: const InputDecoration(
-                            labelText: 'Payment Method',
-                            prefixIcon: Icon(Icons.payments_outlined),
-                          ),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'PayMongo',
-                              child: Text('Universal QR (QR Ph)'),
-                            ),
-                            DropdownMenuItem(value: 'COD', child: Text('Cash on delivery (COD)')),
-                          ],
-                          onChanged: (value) => setState(() {
-                            _selectedPaymentMethod = value;
-                            if (value != 'PayMongo') _paymentReceipt = null;
-                          }),
-                          validator: (value) => value == null ? 'Choose a payment method' : null,
-                        ),
-                        if (_selectedPaymentMethod == 'PayMongo')
-                        const Padding(
-                          padding: EdgeInsets.only(top: 8),
-                          child: Text(
-                            "You will continue to PayMongo to pay using Universal QR (QR Ph). Use PayMongo's simulator for test payments; do not scan test QR codes.",
-                            style: TextStyle(color: Color(0xFF475569), fontSize: 12),
-                          ),
-                        ),
-                        if (_selectedPaymentMethod == 'COD')
-                        const Padding(
-                          padding: EdgeInsets.only(top: 8),
-                          child: Text(
-                            'Pay in cash when receiving your documents.',
-                            style: TextStyle(color: Color(0xFF475569), fontSize: 12),
-                          ),
                         ),
                         const SizedBox(height: 16),
 
@@ -303,7 +264,6 @@ class _RequestDocumentScreenState extends State<RequestDocumentScreen> {
         'quantity': int.parse(_copiesController.text),
         'notes': _notesController.text.trim(),
         'deliveryMethod': _selectedDeliveryMethod,
-        'paymentMethod': _selectedPaymentMethod,
       };
 
       final result = await ApiService.createDocumentRequest(
@@ -313,12 +273,7 @@ class _RequestDocumentScreenState extends State<RequestDocumentScreen> {
       if (!mounted) return;
 
       if (result['success']) {
-        final checkoutUrl = result['data']?['checkoutUrl']?.toString();
-        if (checkoutUrl != null && checkoutUrl.isNotEmpty) {
-          _showCheckoutLinkDialog(checkoutUrl);
-        } else {
-          _showSuccessDialog(result['data']?['referenceNumber']);
-        }
+        _showSuccessDialog(result['data']?['referenceNumber']);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -336,37 +291,6 @@ class _RequestDocumentScreenState extends State<RequestDocumentScreen> {
     } finally {
       if (mounted) _isLoading.value = false;
     }
-  }
-
-  void _showCheckoutLinkDialog(String checkoutUrl) {
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Complete online payment'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Copy this PayMongo checkout link and open it in your browser. Choose GCash or QR Ph there.'),
-            const SizedBox(height: 12),
-            SelectableText(checkoutUrl),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              await Clipboard.setData(ClipboardData(text: checkoutUrl));
-              if (!dialogContext.mounted) return;
-              Navigator.pop(dialogContext);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Checkout link copied.')),
-              );
-            },
-            child: const Text('Copy link'),
-          ),
-        ],
-      ),
-    );
   }
 
   void _showSuccessDialog([String? referenceNumber]) {

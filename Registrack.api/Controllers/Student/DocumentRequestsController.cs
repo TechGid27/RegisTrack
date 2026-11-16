@@ -19,23 +19,17 @@ public class DocumentRequestsController : ControllerBase
     private readonly ILogger<DocumentRequestsController> _logger;
     private readonly IEmailService _emailService;
     private readonly IHubContext<RequestHub> _hubContext;
-    private readonly PayMongoService _payMongoService;
-    private readonly IConfiguration _configuration;
 
     public DocumentRequestsController(
         ApplicationDbContext context, 
         ILogger<DocumentRequestsController> logger, 
         IEmailService emailService,
-        IHubContext<RequestHub> hubContext,
-        PayMongoService payMongoService,
-        IConfiguration configuration)
+        IHubContext<RequestHub> hubContext)
     {
         _context = context;
         _logger = logger;
         _emailService = emailService;
         _hubContext = hubContext;
-        _payMongoService = payMongoService;
-        _configuration = configuration;
     }
 
     /// <summary>
@@ -101,9 +95,6 @@ public class DocumentRequestsController : ControllerBase
                     Purpose = dr.Purpose,
                     Notes = dr.Notes,
                     DeliveryMethod = dr.DeliveryMethod,
-                    PaymentMethod = dr.PaymentMethod,
-                    PaymentStatus = dr.PaymentStatus,
-                    HasPaymentReceipt = dr.PaymentReceiptFileName != null,
                     RequestDate = dr.RequestDate,
                     ProcessedDate = dr.ProcessedDate,
                     ApprovedDate = dr.ApprovedDate,
@@ -152,9 +143,6 @@ public class DocumentRequestsController : ControllerBase
                     Purpose = dr.Purpose,
                     Notes = dr.Notes,
                     DeliveryMethod = dr.DeliveryMethod,
-                    PaymentMethod = dr.PaymentMethod,
-                    PaymentStatus = dr.PaymentStatus,
-                    HasPaymentReceipt = dr.PaymentReceiptFileName != null,
                     RequestDate = dr.RequestDate,
                     ProcessedDate = dr.ProcessedDate,
                     ApprovedDate = dr.ApprovedDate,
@@ -206,9 +194,6 @@ public class DocumentRequestsController : ControllerBase
                     Purpose = dr.Purpose,
                     Notes = dr.Notes,
                     DeliveryMethod = dr.DeliveryMethod,
-                    PaymentMethod = dr.PaymentMethod,
-                    PaymentStatus = dr.PaymentStatus,
-                    HasPaymentReceipt = dr.PaymentReceiptFileName != null,
                     RequestDate = dr.RequestDate,
                     ProcessedDate = dr.ProcessedDate,
                     ApprovedDate = dr.ApprovedDate,
@@ -254,9 +239,6 @@ public class DocumentRequestsController : ControllerBase
                     Purpose = dr.Purpose,
                     Notes = dr.Notes,
                     DeliveryMethod = dr.DeliveryMethod,
-                    PaymentMethod = dr.PaymentMethod,
-                    PaymentStatus = dr.PaymentStatus,
-                    HasPaymentReceipt = dr.PaymentReceiptFileName != null,
                     RequestDate = dr.RequestDate,
                     ProcessedDate = dr.ProcessedDate,
                     ApprovedDate = dr.ApprovedDate,
@@ -308,13 +290,6 @@ public class DocumentRequestsController : ControllerBase
                 return BadRequest(new { message = "Invalid or inactive document type" });
             }
 
-            var unitAmountCentavos = decimal.ToInt64(decimal.Round(
-                documentType.ProcessingFee * 100,
-                0,
-                MidpointRounding.AwayFromZero));
-            if ((dto.PaymentMethod is "GCash" or "PayMongo") && unitAmountCentavos is > 0 and < 100)
-                return BadRequest(new { message = "Online payments must be at least ₱1.00 per document" });
-
             // Generate unique reference number
             var referenceNumber = await GenerateReferenceNumber();
 
@@ -327,35 +302,12 @@ public class DocumentRequestsController : ControllerBase
                 Quantity = dto.Quantity,
                 Notes = dto.Notes ?? string.Empty,
                 DeliveryMethod = dto.DeliveryMethod,
-                PaymentMethod = dto.PaymentMethod,
-                PaymentStatus = dto.PaymentMethod == "COD"
-                    ? "PayOnDelivery"
-                    : unitAmountCentavos == 0 ? "NotRequired" : "Pending",
                 Status = "Request",
                 RequestDate = DateTime.UtcNow
             };
 
             _context.DocumentRequests.Add(request);
             await _context.SaveChangesAsync();
-
-            if (request.PaymentStatus == "Pending")
-            {
-                try
-                {
-                    await StartCheckoutSessionAsync(request, documentType, unitAmountCentavos);
-                }
-                catch (PayMongoIntegrationException ex)
-                {
-                    request.PaymentStatus = "SetupFailed";
-                    await _context.SaveChangesAsync();
-                    _logger.LogWarning(ex, "Unable to start PayMongo checkout for request {Id}", request.Id);
-                    return StatusCode(502, new
-                    {
-                        message = ex.Message,
-                        requestId = request.Id
-                    });
-                }
-            }
 
             var createdRequest = await _context.DocumentRequests
                 .Include(dr => dr.User)
@@ -375,10 +327,6 @@ public class DocumentRequestsController : ControllerBase
                     Purpose = dr.Purpose,
                     Notes = dr.Notes,
                     DeliveryMethod = dr.DeliveryMethod,
-                    PaymentMethod = dr.PaymentMethod,
-                    PaymentStatus = dr.PaymentStatus,
-                    HasPaymentReceipt = dr.PaymentReceiptFileName != null,
-                    CheckoutUrl = dr.PayMongoCheckoutUrl,
                     RequestDate = dr.RequestDate,
                     ProcessedDate = dr.ProcessedDate,
                     ApprovedDate = dr.ApprovedDate,
@@ -410,148 +358,6 @@ public class DocumentRequestsController : ControllerBase
             _logger.LogError(ex, "Error creating document request");
             return StatusCode(500, new { message = "An error occurred while creating the document request" });
         }
-    }
-
-    [HttpPost("{id}/checkout")]
-    [Authorize(Roles = "Student")]
-    public async Task<IActionResult> CreateCheckoutSession(int id)
-    {
-        var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        if (!int.TryParse(currentUserId, out var studentId))
-            return Forbid();
-
-        var request = await _context.DocumentRequests
-            .Include(dr => dr.DocumentType)
-            .FirstOrDefaultAsync(dr => dr.Id == id && dr.UserId == studentId);
-        if (request == null)
-            return NotFound(new { message = "Document request not found" });
-        if (request.PaymentMethod is not ("GCash" or "PayMongo"))
-            return BadRequest(new { message = "This request does not use PayMongo checkout" });
-        if (request.PaymentStatus == "Paid")
-            return BadRequest(new { message = "This request is already paid" });
-        if (request.PaymentStatus == "NotRequired")
-            return BadRequest(new { message = "This request does not require payment" });
-        if (request.PaymentStatus == "Pending" && !string.IsNullOrEmpty(request.PayMongoCheckoutUrl))
-            return Ok(new { checkoutUrl = request.PayMongoCheckoutUrl });
-
-        try
-        {
-            var unitAmountCentavos = decimal.ToInt64(decimal.Round(
-                request.DocumentType.ProcessingFee * 100,
-                0,
-                MidpointRounding.AwayFromZero));
-            await StartCheckoutSessionAsync(request, request.DocumentType, unitAmountCentavos);
-            return Ok(new { checkoutUrl = request.PayMongoCheckoutUrl });
-        }
-        catch (PayMongoIntegrationException ex)
-        {
-            request.PaymentStatus = "SetupFailed";
-            await _context.SaveChangesAsync();
-            _logger.LogWarning(ex, "Unable to start PayMongo checkout for request {Id}", request.Id);
-            return StatusCode(502, new { message = ex.Message, requestId = request.Id });
-        }
-    }
-
-    [HttpPost("{id}/verify-payment")]
-    [Authorize(Roles = "Student,Admin,Staff")]
-    public async Task<IActionResult> VerifyPayment(int id)
-    {
-        var request = await _context.DocumentRequests.FindAsync(id);
-        if (request == null)
-            return NotFound(new { message = "Document request not found" });
-
-        var userRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
-        var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        if (userRole == "Student" && currentUserId != request.UserId.ToString())
-            return Forbid();
-        if (request.PaymentStatus == "Paid")
-            return Ok(new { paymentStatus = request.PaymentStatus });
-        if (string.IsNullOrEmpty(request.PayMongoCheckoutSessionId))
-            return BadRequest(new { message = "No PayMongo checkout session exists for this request" });
-
-        try
-        {
-            var isPaid = await _payMongoService.IsCheckoutSessionPaidAsync(
-                request.PayMongoCheckoutSessionId,
-                request.ReferenceNumber,
-                HttpContext.RequestAborted);
-            if (isPaid)
-            {
-                request.PaymentStatus = "Paid";
-                await _context.SaveChangesAsync();
-            }
-
-            return Ok(new { paymentStatus = request.PaymentStatus });
-        }
-        catch (PayMongoIntegrationException ex)
-        {
-            _logger.LogWarning(ex, "Unable to verify PayMongo payment for request {Id}", id);
-            return StatusCode(502, new { message = ex.Message });
-        }
-    }
-
-    [HttpPost("{id}/mark-cod-paid")]
-    [Authorize(Roles = "Admin,Staff")]
-    public async Task<IActionResult> MarkCashOnDeliveryPaid(int id)
-    {
-        var request = await _context.DocumentRequests.FindAsync(id);
-        if (request == null)
-            return NotFound(new { message = "Document request not found" });
-        if (request.PaymentMethod != "COD" || request.PaymentStatus != "PayOnDelivery")
-            return BadRequest(new { message = "Only unpaid COD requests can be marked as paid" });
-
-        request.PaymentStatus = "Paid";
-        await _context.SaveChangesAsync();
-        return Ok(new { paymentStatus = request.PaymentStatus });
-    }
-
-    private async Task StartCheckoutSessionAsync(DocumentRequest request, DocumentType documentType, long unitAmountCentavos)
-    {
-        var frontendUrl = (_configuration["Frontend:BaseUrl"] ?? "http://localhost:5173").TrimEnd('/') + "/";
-        var successUrl = new Uri(new Uri(frontendUrl), $"payment/return?requestId={request.Id}").ToString();
-        var cancelUrl = new Uri(new Uri(frontendUrl), $"payment/return?requestId={request.Id}&cancelled=true").ToString();
-        var session = await _payMongoService.CreateCheckoutSessionAsync(
-            request.ReferenceNumber,
-            documentType.Name,
-            unitAmountCentavos,
-            request.Quantity,
-            successUrl,
-            cancelUrl,
-            HttpContext.RequestAborted);
-
-        request.PayMongoCheckoutSessionId = session.Id;
-        request.PayMongoCheckoutUrl = session.CheckoutUrl;
-        request.PaymentStatus = "Pending";
-        await _context.SaveChangesAsync();
-    }
-
-    [HttpGet("{id}/payment-receipt")]
-    [Authorize(Roles = "Student,Admin,Staff")]
-    public async Task<IActionResult> GetPaymentReceipt(int id)
-    {
-        var request = await _context.DocumentRequests.FindAsync(id);
-        if (request == null)
-            return NotFound(new { message = "Document request not found" });
-
-        var userRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
-        var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        if (userRole == "Student" && currentUserId != request.UserId.ToString())
-            return Forbid();
-
-        if (string.IsNullOrEmpty(request.PaymentReceiptFileName))
-            return NotFound(new { message = "No payment receipt is attached to this request" });
-
-        var filePath = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "payment-receipts", request.PaymentReceiptFileName);
-        if (!System.IO.File.Exists(filePath))
-            return NotFound(new { message = "Payment receipt file not found" });
-
-        var contentType = Path.GetExtension(filePath).ToLowerInvariant() switch
-        {
-            ".pdf" => "application/pdf",
-            ".png" => "image/png",
-            _ => "image/jpeg"
-        };
-        return PhysicalFile(filePath, contentType, request.PaymentReceiptFileName);
     }
 
     /// <summary>

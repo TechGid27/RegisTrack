@@ -21,7 +21,6 @@ import ForgotPassword from './views/auth/ForgotPassword.jsx';
 // Student pages
 import StudentDashboard from './views/client/pages/dashboard.jsx';
 import NewRequest from './views/client/pages/request.jsx';
-import PaymentReturn from './views/client/pages/PaymentReturn.jsx';
 import ProfilePage from './views/client/pages/profile.jsx';
 
 // Admin / Staff pages
@@ -78,9 +77,6 @@ export default function App() {
                   } />
                   <Route path="/new-request" element={
                     user?.role === 'Student' ? <NewRequest /> : <Navigate to="/login" replace />
-                  } />
-                  <Route path="/payment/return" element={
-                    user?.role === 'Student' ? <PaymentReturn /> : <Navigate to="/login" replace />
                   } />
                   <Route path="/profile" element={
                     user?.role === 'Student' ? <ProfilePage /> : <Navigate to="/login" replace />

@@ -265,13 +265,13 @@ DELETE {{baseUrl}}/DocumentRequirements/{{requirementId}}
 POST {{baseUrl}}/DocumentRequests
 Content-Type: application/x-www-form-urlencoded
 
-userId=1&documentTypeId=1&purpose=Job%20application%20requirements%20for%20ABC%20Company&quantity=2&notes=Please%20expedite%20if%20possible&deliveryMethod=Pickup&paymentMethod=COD
+userId=1&documentTypeId=1&purpose=Job%20application%20requirements%20for%20ABC%20Company&quantity=2&notes=Please%20expedite%20if%20possible&deliveryMethod=Pickup
 
 ### 27. Create another request
 POST {{baseUrl}}/DocumentRequests
 Content-Type: application/x-www-form-urlencoded
 
-userId=1&documentTypeId=2&purpose=Scholarship%20application%20for%20XYZ%20Foundation&quantity=1&deliveryMethod=SoftcopyOnly&paymentMethod=COD
+userId=1&documentTypeId=2&purpose=Scholarship%20application%20for%20XYZ%20Foundation&quantity=1&deliveryMethod=SoftcopyOnly
 
 ### 28. Get all document requests
 GET {{baseUrl}}/DocumentRequests
@@ -446,13 +446,13 @@ Content-Type: application/json
 POST {{baseUrl}}/DocumentRequests
 Content-Type: application/x-www-form-urlencoded
 
-userId=1&documentTypeId=1&purpose=Short&quantity=1&deliveryMethod=Pickup&paymentMethod=COD
+userId=1&documentTypeId=1&purpose=Short&quantity=1&deliveryMethod=Pickup
 
 ### 52. Create document request with invalid quantity
 POST {{baseUrl}}/DocumentRequests
 Content-Type: application/x-www-form-urlencoded
 
-userId=1&documentTypeId=1&purpose=Valid%20purpose%20for%20testing&quantity=150&deliveryMethod=Pickup&paymentMethod=COD
+userId=1&documentTypeId=1&purpose=Valid%20purpose%20for%20testing&quantity=150&deliveryMethod=Pickup
 
 ### 53. Create announcement with past expiry date
 POST {{baseUrl}}/Announcements
@@ -511,7 +511,7 @@ Content-Type: application/json
 POST {{baseUrl}}/DocumentRequests
 Content-Type: application/x-www-form-urlencoded
 
-userId=3&documentTypeId=4&purpose=Transfer%20to%20another%20institution&quantity=1&notes=Needed%20urgently%20for%20enrollment%20deadline&deliveryMethod=Pickup&paymentMethod=COD
+userId=3&documentTypeId=4&purpose=Transfer%20to%20another%20institution&quantity=1&notes=Needed%20urgently%20for%20enrollment%20deadline&deliveryMethod=Pickup
 
 ### Step 5: Process the request through all statuses
 # (Use the reference number from Step 4 response)

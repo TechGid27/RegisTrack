@@ -35,12 +35,13 @@ public class DocumentRequest
 
     [Required]
     [StringLength(20)]
-    public string PaymentMethod { get; set; } = string.Empty;
+    public string PaymentMethod { get; set; } = "None";
 
     [Required]
     [StringLength(20)]
-    public string PaymentStatus { get; set; } = "Pending";
+    public string PaymentStatus { get; set; } = "NotRequired";
 
+    // Legacy payment data is retained in the database; new requests do not use payment.
     [StringLength(100)]
     public string? PayMongoCheckoutSessionId { get; set; }
 

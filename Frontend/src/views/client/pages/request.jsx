@@ -8,7 +8,6 @@ import { UseRequests } from '../../../context/RequestContext';
 import { UseMeta } from '../../../context/MetaContext';
 import { Formik, FastField } from 'formik';
 import * as Yup from 'yup';
-import { requestService } from '../../../api/RequestService';
 
 const PURPOSE_CHOICES = [
   'Job Application',
@@ -32,8 +31,7 @@ const validationSchema = Yup.object({
   }),
   quantity: Yup.number().min(1).required(),
   notes: Yup.string(),
-  deliveryMethod: Yup.string().oneOf(['Pickup', 'SoftcopyOnly']).required('Choose how to receive your documents'),
-  paymentMethod: Yup.string().oneOf(['PayMongo', 'COD']).required('Choose a payment method')
+  deliveryMethod: Yup.string().oneOf(['Pickup', 'SoftcopyOnly']).required('Choose how to receive your documents')
 });
 
 // ✅ Reusable Input
@@ -68,15 +66,6 @@ function NewRequest({ onCancel, onSuccess, sx = {}, isModal = false }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [paymentRetryRequestId, setPaymentRetryRequestId] = useState(null);
-  const retryCheckout = async () => {
-    try {
-      const { checkoutUrl } = await requestService.createCheckout(paymentRetryRequestId);
-      window.location.assign(checkoutUrl);
-    } catch (err) {
-      setError(err.message || 'Unable to start the PayMongo checkout.');
-    }
-  };
 
   return (
     <Box sx={{
@@ -98,17 +87,7 @@ function NewRequest({ onCancel, onSuccess, sx = {}, isModal = false }) {
         </Typography>
       </Box>
 
-      {error && (
-        <Alert
-          severity="error"
-          sx={{ mb: 2, borderRadius: 3 }}
-          action={paymentRetryRequestId ? (
-            <Button color="inherit" size="small" onClick={retryCheckout}>Retry checkout</Button>
-          ) : null}
-        >
-          {error}
-        </Alert>
-      )}
+      {error && <Alert severity="error" sx={{ mb: 2, borderRadius: 3 }}>{error}</Alert>}
       {success && <Alert severity="success" sx={{ mb: 2, borderRadius: 3 }}>{success}</Alert>}
 
       <Formik
@@ -118,8 +97,7 @@ function NewRequest({ onCancel, onSuccess, sx = {}, isModal = false }) {
           purposeOther: '',
           quantity: 1,
           notes: '',
-          deliveryMethod: '',
-          paymentMethod: ''
+          deliveryMethod: ''
         }}
         validationSchema={validationSchema}
         validateOnChange={false}
@@ -128,8 +106,6 @@ function NewRequest({ onCancel, onSuccess, sx = {}, isModal = false }) {
           setLoading(true);
           setError('');
           setSuccess('');
-          setPaymentRetryRequestId(null);
-          let savedRequestId = null;
 
           try {
             const finalPurpose = values.purposeChoice === 'Other'
@@ -143,45 +119,16 @@ function NewRequest({ onCancel, onSuccess, sx = {}, isModal = false }) {
             payload.append('quantity', String(parseInt(values.quantity, 10)));
             payload.append('notes', values.notes ? values.notes.trim() : '');
             payload.append('deliveryMethod', values.deliveryMethod);
-            payload.append('paymentMethod', values.paymentMethod);
 
-            const createdRequest = await createRequest(payload);
-            savedRequestId = createdRequest.id;
-            let checkoutUrl = createdRequest.checkoutUrl;
-
-            if (values.paymentMethod === 'PayMongo' && !checkoutUrl &&
-                createdRequest.paymentStatus !== 'NotRequired') {
-              setPaymentRetryRequestId(createdRequest.id);
-              try {
-                const checkout = await requestService.createCheckout(createdRequest.id);
-                checkoutUrl = checkout.checkoutUrl;
-              } catch (checkoutError) {
-                setError(checkoutError.message || 'Request was saved, but PayMongo checkout could not be started.');
-                return;
-              }
-            }
-
-            if (checkoutUrl) {
-              window.location.assign(checkoutUrl);
-              return;
-            }
-
-            if (values.paymentMethod === 'PayMongo' && createdRequest.paymentStatus !== 'NotRequired') {
-              setError('Request was saved, but PayMongo did not return a checkout link. Use Retry checkout.');
-              setPaymentRetryRequestId(createdRequest.id);
-              return;
-            }
+            await createRequest(payload);
 
             resetForm();
-            setSuccess(values.paymentMethod === 'PayMongo'
-              ? 'Request submitted. No fee is due, so no PayMongo checkout is needed.'
-              : 'Request submitted successfully!');
+            setSuccess('Request submitted successfully!');
             setTimeout(() => setSuccess(''), 3000);
             if (typeof onSuccess === 'function') onSuccess();
 
           } catch (err) {
             setError(err.message || 'Failed to submit the document request.');
-            setPaymentRetryRequestId(err.data?.requestId || savedRequestId);
           } finally {
             setLoading(false);
             setSubmitting(false);
@@ -225,26 +172,6 @@ function NewRequest({ onCancel, onSuccess, sx = {}, isModal = false }) {
                 <MenuItem value="Pickup">Pick up printed documents</MenuItem>
                 <MenuItem value="SoftcopyOnly">Softcopy only</MenuItem>
               </FormInput>
-
-              <FormInput name="paymentMethod" label="Payment Method" select>
-                <MenuItem value="PayMongo">Universal QR (QR Ph)</MenuItem>
-                <MenuItem value="COD">Cash on delivery (COD)</MenuItem>
-              </FormInput>
-              {values.paymentMethod === 'PayMongo' && (
-                <Stack spacing={1}>
-                  <Alert severity="info">
-                    Submit to open PayMongo's QR Ph checkout page.
-                  </Alert>
-                  <Alert severity="warning">
-                    Do not scan a QR code from a test transaction; use PayMongo's simulator if it is shown.
-                  </Alert>
-                </Stack>
-              )}
-              {values.paymentMethod === 'COD' && (
-                <Alert severity="info">
-                  Pay in cash when receiving your documents.
-                </Alert>
-              )}
 
               {/* Purpose — dropdown with preset choices */}
               <FormInput
