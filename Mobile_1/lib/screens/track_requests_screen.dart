@@ -145,6 +145,7 @@ class _TrackRequestsScreenState extends State<TrackRequestsScreen> {
                             request['documentTypeName'] ?? 'Unknown Document',
                         status: _mapStatus(request['status'] ?? 'Request'),
                         rawStatus: request['status'] ?? 'Pending',
+                        deliveryMethod: request['deliveryMethod']?.toString() ?? 'Pickup',
                         date:
                             DateTime.tryParse(request['requestDate'] ?? '') ??
                             DateTime.now(),
@@ -196,6 +197,7 @@ class _RequestCard extends StatelessWidget {
   final String documentType;
   final RequestStatus status;
   final String rawStatus;
+  final String deliveryMethod;
   final DateTime date;
   final int copies;
   final String requestName;
@@ -211,6 +213,7 @@ class _RequestCard extends StatelessWidget {
     required this.documentType,
     required this.status,
     required this.rawStatus,
+    required this.deliveryMethod,
     required this.date,
     required this.copies,
     required this.requestName,
@@ -261,7 +264,7 @@ class _RequestCard extends StatelessWidget {
                       letterSpacing: 1,
                     ),
                   ),
-                  _StatusChip(status: status),
+                  _StatusChip(status: status, deliveryMethod: deliveryMethod),
                 ],
               ),
               const SizedBox(height: 12),
@@ -391,6 +394,16 @@ void showRequestDetailsDialog({
                         value: copies.toString(),
                       ),
                       _DetailRow(label: 'Purpose', value: purpose),
+                      if (currentRequest['deliveryMethod'] == 'CashOnDelivery') ...[
+                        _DetailRow(
+                          label: 'Delivery Address',
+                          value: currentRequest['address']?.toString() ?? 'Not provided',
+                        ),
+                        _DetailRow(
+                          label: 'Postal Code',
+                          value: currentRequest['postalCode']?.toString() ?? 'Not provided',
+                        ),
+                      ],
                       if (userRole == 'admin' || userRole == 'staff') ...[
                         const SizedBox(height: 32),
                         const Text(
@@ -422,9 +435,14 @@ void showRequestDetailsDialog({
                         ),
                       ),
                       const SizedBox(height: 24),
-                      _StatusTimeline(currentStatus: status),
+                      _StatusTimeline(
+                        currentStatus: status,
+                        deliveryMethod: currentRequest['deliveryMethod']?.toString() ?? 'Pickup',
+                      ),
                       const SizedBox(height: 40),
-                      if (status == RequestStatus.download && documentUrl.isNotEmpty)
+                      if (status == RequestStatus.download &&
+                          currentRequest['deliveryMethod'] == 'SoftcopyOnly' &&
+                          documentUrl.isNotEmpty)
                         SizedBox(
                           width: double.infinity,
                           child: FilledButton.icon(                   
@@ -447,7 +465,9 @@ void showRequestDetailsDialog({
                             ),
                           ),
                         )
-                      else if (status == RequestStatus.download && documentUrl.isEmpty)
+                      else if (status == RequestStatus.download &&
+                          currentRequest['deliveryMethod'] == 'SoftcopyOnly' &&
+                          documentUrl.isEmpty)
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
@@ -481,7 +501,8 @@ void showRequestDetailsDialog({
 
 class _StatusChip extends StatelessWidget {
   final RequestStatus status;
-  const _StatusChip({required this.status});
+  final String deliveryMethod;
+  const _StatusChip({required this.status, required this.deliveryMethod});
 
   @override
   Widget build(BuildContext context) {
@@ -510,13 +531,30 @@ class _StatusChip extends StatelessWidget {
       case RequestStatus.request:
         return {'label': 'PENDING', 'color': const Color(0xFF1A237E)};
       case RequestStatus.inProcess:
-        return {'label': 'PROCESSING', 'color': const Color(0xFFFFB547)};
+        return {
+          'label': deliveryMethod == 'SoftcopyOnly' ? 'PROCESSING' : 'PREPARING',
+          'color': const Color(0xFFFFB547),
+        };
       case RequestStatus.approved:
         return {'label': 'APPROVED', 'color': const Color(0xFF05CD99)};
       case RequestStatus.receive:
-        return {'label': 'READY', 'color': const Color(0xFF1A237E)};
+        return {
+          'label': deliveryMethod == 'Pickup'
+              ? 'READY FOR PICKUP'
+              : deliveryMethod == 'CashOnDelivery'
+                  ? 'READY FOR DELIVERY'
+                  : 'FILE READY',
+          'color': const Color(0xFF1A237E),
+        };
       case RequestStatus.download:
-        return {'label': 'COMPLETED', 'color': AppColors.primaryDark};
+        return {
+          'label': deliveryMethod == 'Pickup'
+              ? 'COLLECTED'
+              : deliveryMethod == 'CashOnDelivery'
+                  ? 'DELIVERED'
+                  : 'DOWNLOAD READY',
+          'color': AppColors.primaryDark,
+        };
     }
   }
 }
@@ -559,11 +597,17 @@ class _DetailRow extends StatelessWidget {
 
 class _StatusTimeline extends StatelessWidget {
   final RequestStatus currentStatus;
-  const _StatusTimeline({required this.currentStatus});
+  final String deliveryMethod;
+  const _StatusTimeline({required this.currentStatus, required this.deliveryMethod});
 
   @override
   Widget build(BuildContext context) {
-    final statuses = RequestStatus.values;
+    final statuses = RequestStatus.values
+        .where((status) =>
+            status != RequestStatus.receive ||
+            deliveryMethod == 'Pickup' ||
+            currentStatus == RequestStatus.receive)
+        .toList();
     return Column(
       children: statuses.map((status) {
         final isCompleted = status.index <= currentStatus.index;
@@ -571,6 +615,7 @@ class _StatusTimeline extends StatelessWidget {
         final isLast = status == statuses.last;
         return _TimelineItem(
           status: status,
+          deliveryMethod: deliveryMethod,
           isCompleted: isCompleted,
           isActive: isActive,
           isLast: isLast,
@@ -582,12 +627,14 @@ class _StatusTimeline extends StatelessWidget {
 
 class _TimelineItem extends StatelessWidget {
   final RequestStatus status;
+  final String deliveryMethod;
   final bool isCompleted;
   final bool isActive;
   final bool isLast;
 
   const _TimelineItem({
     required this.status,
+    required this.deliveryMethod,
     required this.isCompleted,
     required this.isActive,
     required this.isLast,
@@ -633,7 +680,7 @@ class _TimelineItem extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _getStatusLabel(status),
+                  _getStatusLabel(status, deliveryMethod),
                   style: TextStyle(
                     fontWeight: isCompleted
                         ? FontWeight.bold
@@ -662,18 +709,26 @@ class _TimelineItem extends StatelessWidget {
     );
   }
 
-  String _getStatusLabel(RequestStatus status) {
+  String _getStatusLabel(RequestStatus status, String deliveryMethod) {
     switch (status) {
       case RequestStatus.request:
         return 'Request Submitted';
       case RequestStatus.inProcess:
-        return 'In Process';
+        return deliveryMethod == 'SoftcopyOnly' ? 'In Process' : 'Preparing';
       case RequestStatus.approved:
         return 'Approved';
       case RequestStatus.receive:
-        return 'Ready for Collection';
+        return deliveryMethod == 'Pickup'
+            ? 'Ready for Pickup'
+            : deliveryMethod == 'CashOnDelivery'
+                ? 'Ready for Delivery'
+                : 'File Ready';
       case RequestStatus.download:
-        return 'Document Completed';
+        return deliveryMethod == 'Pickup'
+            ? 'Collected'
+            : deliveryMethod == 'CashOnDelivery'
+                ? 'Delivered'
+                : 'Available for Download';
     }
   }
 }
@@ -701,13 +756,40 @@ class _UpdateStatusWidgetState extends State<_UpdateStatusWidget> {
   PlatformFile? _selectedFile;
   final TextEditingController _notesController = TextEditingController();
 
-  final List<Map<String, String>> _statusOptions = [
-    {'value': 'Request', 'label': 'Request Submitted'},
-    {'value': 'InProcess', 'label': 'In Process'},
-    {'value': 'Approve', 'label': 'Approved'},
-    {'value': 'Receive', 'label': 'Ready for Collection'},
-    {'value': 'Download', 'label': 'Document Completed'},
-  ];
+  bool get _isSoftcopy => widget.currentRequest['deliveryMethod'] == 'SoftcopyOnly';
+
+  List<String> get _workflowSteps => _isSoftcopy && widget.currentStatus != 'Receive'
+      ? ['Request', 'InProcess', 'Approve', 'Download']
+      : ['Request', 'InProcess', 'Approve', 'Receive', 'Download'];
+
+  List<Map<String, String>> get _statusOptions {
+    final steps = _workflowSteps;
+    final currentIndex = steps.indexOf(widget.currentStatus);
+    return steps.asMap().entries
+        .where((entry) => entry.key == currentIndex || entry.key == currentIndex + 1)
+        .map((entry) {
+          final status = entry.value;
+          final label = status == 'InProcess'
+              ? (_isSoftcopy ? 'In Process' : 'Preparing')
+              : status == 'Receive'
+                  ? (_isSoftcopy
+                      ? 'File Ready'
+                      : widget.currentRequest['deliveryMethod'] == 'CashOnDelivery'
+                          ? 'Ready for Delivery'
+                          : 'Ready for Pickup')
+                  : status == 'Request'
+                      ? 'Request Submitted'
+                      : status == 'Approve'
+                          ? 'Approved'
+                          : _isSoftcopy
+                              ? 'Available for Download'
+                              : widget.currentRequest['deliveryMethod'] == 'CashOnDelivery'
+                                  ? 'Delivered'
+                                  : 'Collected';
+          return {'value': status, 'label': label};
+        })
+        .toList();
+  }
 
   @override
   void initState() {
@@ -748,9 +830,12 @@ class _UpdateStatusWidgetState extends State<_UpdateStatusWidget> {
   }
 
   Future<void> _updateStatus() async {
-    if (_selectedStatus == 'Approve' && _selectedFile == null && (widget.currentRequest['documentUrl'] == null || widget.currentRequest['documentUrl'].toString().isEmpty)) {
+    if (_isSoftcopy &&
+        (_selectedStatus == 'Approve' || _selectedStatus == 'Download') &&
+        _selectedFile == null &&
+        (widget.currentRequest['documentUrl'] == null || widget.currentRequest['documentUrl'].toString().isEmpty)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a file to upload for approval.')),
+        const SnackBar(content: Text('Upload the completed file before approving or completing a softcopy request.')),
       );
       return;
     }
@@ -874,7 +959,7 @@ class _UpdateStatusWidgetState extends State<_UpdateStatusWidget> {
             ),
             maxLines: 2,
           ),
-          if (_selectedStatus == 'Approve' || _selectedStatus == 'Receive' || _selectedStatus == 'Download') ...[
+          if (_isSoftcopy && (_selectedStatus == 'Approve' || _selectedStatus == 'Download')) ...[
             const SizedBox(height: 16),
             Row(
               children: [

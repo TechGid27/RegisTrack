@@ -7,6 +7,7 @@ export const requestService = {
   getByReference: (ref) => request(`/DocumentRequests/reference/${ref}`),
   create: (data) => request('/DocumentRequests', { method: 'POST', body: data }),
   update: (id, data) => request(`/DocumentRequests/${id}`, { method: 'PUT', body: data }),
+  markPaymentReceived: (id) => request(`/DocumentRequests/${id}/payment`, { method: 'POST' }),
   delete: (id) => request(`/DocumentRequests/${id}`, { method: 'DELETE' }),
 
   upload: (id, formData) => request(`/DocumentRequests/${id}/upload`, {

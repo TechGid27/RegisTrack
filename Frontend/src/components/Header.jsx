@@ -276,7 +276,7 @@ function ResponsiveAppBar() {
           >
             <Box
               component="img"
-              src="/LogoPurple.png"
+              src="/901975676_1461006332657415_7870701664435826141_n.png"
               alt="RegisTrack"
               sx={{ width: 80, height: 80, objectFit: 'contain' }}
             />

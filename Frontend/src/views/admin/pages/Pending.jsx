@@ -92,7 +92,7 @@ export default function AllRequests() {
       >
         <Tab label="All" value="All" />
         <Tab label="Pending" value="Request" />
-        <Tab label="In Progress" value="InProcess" />
+        <Tab label="Preparing / In Progress" value="InProcess" />
         <Tab label="Approved" value="Approve" />
         <Tab label="Received" value="Receive" />
         <Tab label="Completed" value="Download" />
@@ -176,7 +176,7 @@ export default function AllRequests() {
                 {/* Status + Manage row */}
                 <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mt: 2 }}>
                   <Chip
-                    label={req.status}
+                    label={req.status === 'InProcess' && req.deliveryMethod !== 'SoftcopyOnly' ? 'Preparing' : req.status}
                     size="small"
                     sx={{ bgcolor: s.bg, color: s.text, fontWeight: 800, borderRadius: '8px', fontSize: '0.7rem' }}
                   />

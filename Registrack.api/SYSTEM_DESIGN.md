@@ -78,6 +78,11 @@ DocumentRequest
 ├── Id, ReferenceNumber (unique, e.g. DR202604150001)
 ├── UserId (FK), DocumentTypeId (FK)
 ├── Status: Request → InProcess → Approve → Receive → Download
+│   ├── Pickup: InProcess is shown as Preparing; Receive means Ready for Pickup
+│   ├── CashOnDelivery: requires delivery address and postal code; Receive means Ready for Delivery
+│   └── SoftcopyOnly: skips Receive and requires an uploaded file before Approve
+├── DeliveryAddress, PostalCode (required for CashOnDelivery)
+├── PaymentMethod: None | COD | PayMongo
 ├── Quantity, Purpose, Notes
 ├── RequestDate, ProcessedDate, ApprovedDate, CompletedDate
 ├── ProcessedBy, ApprovedBy
@@ -96,25 +101,12 @@ Announcement
 ## Request Lifecycle
 
 ```
-[Student submits]
-      │
-      ▼
-   Request
-      │  Admin picks up
-      ▼
-  InProcess
-      │  Admin approves
-      ▼
-   Approve
-      │  Student receives physically
-      ▼
-   Receive
-      │  Document uploaded / available
-      ▼
-  Download
+Pickup:   Request → Preparing → Approve → Ready for Pickup → Collected
+COD:      Request → Preparing → Approve → Ready for Delivery → Delivered
+Softcopy: Request → In Process → Approve (file upload required) → Download
 ```
 
-Status transitions are strictly validated — you can't skip steps or go backwards except for specific rollbacks (e.g., `InProcess → Request`, `Approve → InProcess`).
+Status transitions are validated per delivery method. Printed pickup and cash-on-delivery requests do not require an admin upload; softcopy requests require the completed document before approval. Cash-on-delivery requests store the student's delivery address and postal code for staff.
 
 ---
 

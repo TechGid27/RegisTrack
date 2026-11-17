@@ -19,17 +19,20 @@ public class DocumentRequestsController : ControllerBase
     private readonly ILogger<DocumentRequestsController> _logger;
     private readonly IEmailService _emailService;
     private readonly IHubContext<RequestHub> _hubContext;
+    private readonly PayMongoCheckoutService _payMongoCheckoutService;
 
     public DocumentRequestsController(
         ApplicationDbContext context, 
         ILogger<DocumentRequestsController> logger, 
         IEmailService emailService,
-        IHubContext<RequestHub> hubContext)
+        IHubContext<RequestHub> hubContext,
+        PayMongoCheckoutService payMongoCheckoutService)
     {
         _context = context;
         _logger = logger;
         _emailService = emailService;
         _hubContext = hubContext;
+        _payMongoCheckoutService = payMongoCheckoutService;
     }
 
     /// <summary>
@@ -95,6 +98,11 @@ public class DocumentRequestsController : ControllerBase
                     Purpose = dr.Purpose,
                     Notes = dr.Notes,
                     DeliveryMethod = dr.DeliveryMethod,
+                    Address = userRole == "Admin" || userRole == "Staff" ? dr.DeliveryAddress : null,
+                    PostalCode = userRole == "Admin" || userRole == "Staff" ? dr.PostalCode : null,
+                    PaymentMethod = dr.PaymentMethod,
+                    PaymentStatus = dr.PaymentStatus,
+                    PaymentAmount = dr.PaymentAmount,
                     RequestDate = dr.RequestDate,
                     ProcessedDate = dr.ProcessedDate,
                     ApprovedDate = dr.ApprovedDate,
@@ -125,6 +133,7 @@ public class DocumentRequestsController : ControllerBase
     {
         try
         {
+            var canViewAddress = User.IsInRole("Admin") || User.IsInRole("Staff");
             var request = await _context.DocumentRequests
                 .Include(dr => dr.User)
                 .Include(dr => dr.DocumentType)
@@ -143,6 +152,11 @@ public class DocumentRequestsController : ControllerBase
                     Purpose = dr.Purpose,
                     Notes = dr.Notes,
                     DeliveryMethod = dr.DeliveryMethod,
+                    Address = canViewAddress ? dr.DeliveryAddress : null,
+                    PostalCode = canViewAddress ? dr.PostalCode : null,
+                    PaymentMethod = dr.PaymentMethod,
+                    PaymentStatus = dr.PaymentStatus,
+                    PaymentAmount = dr.PaymentAmount,
                     RequestDate = dr.RequestDate,
                     ProcessedDate = dr.ProcessedDate,
                     ApprovedDate = dr.ApprovedDate,
@@ -194,6 +208,9 @@ public class DocumentRequestsController : ControllerBase
                     Purpose = dr.Purpose,
                     Notes = dr.Notes,
                     DeliveryMethod = dr.DeliveryMethod,
+                    PaymentMethod = dr.PaymentMethod,
+                    PaymentStatus = dr.PaymentStatus,
+                    PaymentAmount = dr.PaymentAmount,
                     RequestDate = dr.RequestDate,
                     ProcessedDate = dr.ProcessedDate,
                     ApprovedDate = dr.ApprovedDate,
@@ -239,6 +256,9 @@ public class DocumentRequestsController : ControllerBase
                     Purpose = dr.Purpose,
                     Notes = dr.Notes,
                     DeliveryMethod = dr.DeliveryMethod,
+                    PaymentMethod = dr.PaymentMethod,
+                    PaymentStatus = dr.PaymentStatus,
+                    PaymentAmount = dr.PaymentAmount,
                     RequestDate = dr.RequestDate,
                     ProcessedDate = dr.ProcessedDate,
                     ApprovedDate = dr.ApprovedDate,
@@ -268,7 +288,7 @@ public class DocumentRequestsController : ControllerBase
     [HttpPost]
     [Authorize(Roles = "Student")]
     [RequestSizeLimit(10 * 1024 * 1024 + 64 * 1024)]
-    public async Task<ActionResult<DocumentRequestResponseDto>> CreateDocumentRequest([FromForm] CreateDocumentRequestDto dto)
+    public async Task<IActionResult> CreateDocumentRequest([FromForm] CreateDocumentRequestDto dto)
     {
         try
         {
@@ -276,9 +296,9 @@ public class DocumentRequestsController : ControllerBase
             if (currentUserId != dto.UserId.ToString())
                 return Forbid();
 
-            // Validate user exists
-            var userExists = await _context.Users.AnyAsync(u => u.Id == dto.UserId && u.IsActive);
-            if (!userExists)
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.Id == dto.UserId && u.IsActive);
+            if (user == null)
             {
                 return BadRequest(new { message = "Invalid or inactive user" });
             }
@@ -290,8 +310,70 @@ public class DocumentRequestsController : ControllerBase
                 return BadRequest(new { message = "Invalid or inactive document type" });
             }
 
-            // Generate unique reference number
+            if (dto.DeliveryMethod == "CashOnDelivery" &&
+                (string.IsNullOrWhiteSpace(dto.Address) || string.IsNullOrWhiteSpace(dto.PostalCode)))
+            {
+                return BadRequest(new { message = "Address and postal code are required for cash-on-delivery delivery" });
+            }
+
+            var amount = Math.Round(documentType.ProcessingFee * dto.Quantity, 2);
+            var paymentMethod = amount > 0
+                ? dto.PaymentMethod ?? (dto.DeliveryMethod == "SoftcopyOnly" ? "PayMongo" : "COD")
+                : "None";
+            if (amount > 0 && paymentMethod == "None")
+            {
+                return BadRequest(new { message = "Choose PayMongo or COD for this request" });
+            }
+            if (paymentMethod == "COD" &&
+                dto.DeliveryMethod != "Pickup" &&
+                dto.DeliveryMethod != "CashOnDelivery")
+            {
+                return BadRequest(new { message = "COD is only available for printed-document pickup or delivery" });
+            }
+            if (paymentMethod == "PayMongo" &&
+                dto.DeliveryMethod != "SoftcopyOnly" &&
+                dto.DeliveryMethod != "Pickup")
+            {
+                return BadRequest(new { message = "Online payment is only available for printed pickup or softcopy requests" });
+            }
+
             var referenceNumber = await GenerateReferenceNumber();
+
+            if (paymentMethod == "PayMongo")
+            {
+                var amountInCentavos = checked((long)(amount * 100));
+                var checkout = await _payMongoCheckoutService.CreateCheckoutAsync(
+                    referenceNumber,
+                    documentType.Name,
+                    dto.Quantity,
+                    amountInCentavos,
+                    user.Email,
+                    HttpContext.RequestAborted);
+
+                var pendingCheckout = new PendingDocumentRequestCheckout
+                {
+                    ReferenceNumber = referenceNumber,
+                    UserId = dto.UserId,
+                    DocumentTypeId = dto.DocumentTypeId,
+                    Purpose = dto.Purpose,
+                    Quantity = dto.Quantity,
+                    Notes = dto.Notes ?? string.Empty,
+                    DeliveryMethod = dto.DeliveryMethod,
+                    PaymentMethod = "PayMongo",
+                    PaymentStatus = "Pending",
+                    Amount = amount,
+                    PayMongoCheckoutSessionId = checkout.SessionId,
+                    PayMongoCheckoutUrl = checkout.CheckoutUrl
+                };
+                _context.PendingDocumentRequestCheckouts.Add(pendingCheckout);
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    checkoutUrl = checkout.CheckoutUrl,
+                    referenceNumber
+                });
+            }
 
             var request = new DocumentRequest
             {
@@ -302,6 +384,11 @@ public class DocumentRequestsController : ControllerBase
                 Quantity = dto.Quantity,
                 Notes = dto.Notes ?? string.Empty,
                 DeliveryMethod = dto.DeliveryMethod,
+                DeliveryAddress = dto.DeliveryMethod == "CashOnDelivery" ? dto.Address?.Trim() : null,
+                PostalCode = dto.DeliveryMethod == "CashOnDelivery" ? dto.PostalCode?.Trim() : null,
+                PaymentMethod = paymentMethod,
+                PaymentStatus = amount > 0 ? "Pending" : "NotRequired",
+                PaymentAmount = amount,
                 Status = "Request",
                 RequestDate = DateTime.UtcNow
             };
@@ -327,6 +414,11 @@ public class DocumentRequestsController : ControllerBase
                     Purpose = dr.Purpose,
                     Notes = dr.Notes,
                     DeliveryMethod = dr.DeliveryMethod,
+                    Address = dr.DeliveryAddress,
+                    PostalCode = dr.PostalCode,
+                    PaymentMethod = dr.PaymentMethod,
+                    PaymentStatus = dr.PaymentStatus,
+                    PaymentAmount = dr.PaymentAmount,
                     RequestDate = dr.RequestDate,
                     ProcessedDate = dr.ProcessedDate,
                     ApprovedDate = dr.ApprovedDate,
@@ -360,6 +452,40 @@ public class DocumentRequestsController : ControllerBase
         }
     }
 
+    [HttpPost("{id}/payment")]
+    [Authorize(Roles = "Admin,Staff")]
+    public async Task<IActionResult> MarkCodPaymentReceived(int id)
+    {
+        try
+        {
+            var request = await _context.DocumentRequests.FindAsync(id);
+            if (request == null)
+                return NotFound(new { message = $"Document request with ID {id} not found" });
+
+            if (request.PaymentMethod != "COD" || request.PaymentStatus != "Pending")
+                return BadRequest(new { message = "Only pending COD payments can be marked as received" });
+
+            request.PaymentStatus = "Paid";
+            await _context.SaveChangesAsync();
+
+            await _hubContext.Clients.Group($"user_{request.UserId}").SendAsync("RequestUpdated", new
+            {
+                id = request.Id,
+                referenceNumber = request.ReferenceNumber,
+                status = request.Status,
+                paymentStatus = request.PaymentStatus,
+                updatedAt = DateTime.UtcNow
+            });
+
+            return Ok(new { paymentStatus = request.PaymentStatus });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error recording COD payment for request {Id}", id);
+            return StatusCode(500, new { message = "An error occurred while recording the payment" });
+        }
+    }
+
     /// <summary>
     /// PUT: api/DocumentRequests/{id} - Update document request status (Staff and Admin only)
     /// </summary>
@@ -376,9 +502,16 @@ public class DocumentRequestsController : ControllerBase
             }
 
             // Validate status transition
-            if (!IsValidStatusTransition(request.Status, dto.Status))
+            if (!IsValidStatusTransition(request.Status, dto.Status, request.DeliveryMethod))
             {
                 return BadRequest(new { message = $"Invalid status transition from {request.Status} to {dto.Status}" });
+            }
+
+            if (request.DeliveryMethod == "SoftcopyOnly" &&
+                (dto.Status == "Approve" || dto.Status == "Download") &&
+                string.IsNullOrWhiteSpace(request.DocumentUrl))
+            {
+                return BadRequest(new { message = "Upload the completed document before approving or completing a softcopy request" });
             }
 
             // Update status and timestamps
@@ -435,7 +568,7 @@ public class DocumentRequestsController : ControllerBase
 
                 _emailService.QueueStatusUpdateEmail(
                     user.Email, $"{user.FirstName} {user.LastName}",
-                    request.ReferenceNumber, dto.Status, dto.Notes, attachmentPath);
+                    request.ReferenceNumber, dto.Status, dto.Notes, attachmentPath, request.DeliveryMethod);
             }
 
             return NoContent();
@@ -478,6 +611,11 @@ public class DocumentRequestsController : ControllerBase
             if (request.Status != "Request")
             {
                 return BadRequest(new { message = "Only requests in 'Request' status can be deleted" });
+            }
+
+            if (request.PaymentStatus == "Paid")
+            {
+                return BadRequest(new { message = "Paid requests cannot be deleted" });
             }
 
             _context.DocumentRequests.Remove(request);
@@ -567,16 +705,29 @@ public class DocumentRequestsController : ControllerBase
 
     private async Task<string> GenerateReferenceNumber()
     {
-        var date = DateTime.UtcNow;
-        var prefix = $"DR{date:yyyyMMdd}";
-        var count = await _context.DocumentRequests
-            .Where(dr => dr.ReferenceNumber.StartsWith(prefix))
-            .CountAsync();
-        
-        return $"{prefix}{(count + 1):D4}";
+        var prefix = $"DR{DateTime.UtcNow:yyyyMMdd}";
+        var requestCount = await _context.DocumentRequests
+            .CountAsync(request => request.ReferenceNumber.StartsWith(prefix));
+        var checkoutCount = await _context.PendingDocumentRequestCheckouts
+            .CountAsync(checkout => checkout.ReferenceNumber.StartsWith(prefix));
+        var sequence = Math.Max(requestCount, checkoutCount) + 1;
+
+        while (true)
+        {
+            var referenceNumber = $"{prefix}{sequence:D4}";
+            var requestExists = await _context.DocumentRequests
+                .AnyAsync(request => request.ReferenceNumber == referenceNumber);
+            var checkoutExists = await _context.PendingDocumentRequestCheckouts
+                .AnyAsync(checkout => checkout.ReferenceNumber == referenceNumber);
+
+            if (!requestExists && !checkoutExists)
+                return referenceNumber;
+
+            sequence++;
+        }
     }
 
-    private bool IsValidStatusTransition(string currentStatus, string newStatus)
+    private bool IsValidStatusTransition(string currentStatus, string newStatus, string deliveryMethod)
     {
         var validTransitions = new Dictionary<string, List<string>>
         {
@@ -586,6 +737,11 @@ public class DocumentRequestsController : ControllerBase
             { "Receive", new List<string> { "Download", "Approve" } },
             { "Download", new List<string> { } }
         };
+
+        if (deliveryMethod == "SoftcopyOnly" && currentStatus == "Approve")
+        {
+            return newStatus == "Download" || newStatus == "InProcess";
+        }
 
         return validTransitions.ContainsKey(currentStatus) && 
                validTransitions[currentStatus].Contains(newStatus);

@@ -88,9 +88,9 @@ export default function StudentDashboard() {
                       <Chip 
                         label={
                           req.status === 'Request'   ? 'PENDING' :
-                          req.status === 'InProcess' ? 'IN PROCESS' :
+                          req.status === 'InProcess' ? (req.deliveryMethod === 'SoftcopyOnly' ? 'IN PROCESS' : 'PREPARING') :
                           req.status === 'Approve'   ? 'APPROVED' :
-                          req.status === 'Receive'   ? 'READY FOR PICKUP' :
+                          req.status === 'Receive'   ? (req.deliveryMethod === 'Pickup' ? 'READY FOR PICKUP' : req.deliveryMethod === 'CashOnDelivery' ? 'READY FOR DELIVERY' : 'DOCUMENT READY') :
                           req.status?.toUpperCase() || 'PENDING'
                         }
                         size="small" 
@@ -115,6 +115,11 @@ export default function StudentDashboard() {
                     <Typography variant="caption" color="#707EAE" display="block" sx={{ mb: 4, minHeight: '40px' }}>
                       {req.purpose || 'Official school document request.'}
                     </Typography>
+                    {req.paymentMethod === 'COD' && req.paymentStatus === 'Pending' && (
+                      <Typography variant="caption" color="warning.main" display="block" sx={{ mb: 1 }}>
+                        ₱{Number(req.paymentAmount).toLocaleString()} due at {req.deliveryMethod === 'CashOnDelivery' ? 'delivery' : 'pickup'}
+                      </Typography>
+                    )}
                     
                     {req.status === 'Ready' ? (
                       <Button endIcon={<ArrowForwardIcon />} sx={{ textTransform: 'none', fontWeight: '700', p: 0, color: '#1A237E' }}>

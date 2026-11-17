@@ -331,6 +331,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                   title: (request['documentTypeName'] ?? 'Document').toString(),
                   reference: (request['referenceNumber'] ?? 'REF-${request['id']}').toString(),
                   rawStatus: (request['status'] ?? 'Request').toString(),
+                  deliveryMethod: (request['deliveryMethod'] ?? 'Pickup').toString(),
                 ),
               )).toList(),
             );
@@ -366,12 +367,18 @@ class _ActiveRequestCard extends StatelessWidget {
   final String title;
   final String reference;
   final String rawStatus;
+  final String deliveryMethod;
 
-  const _ActiveRequestCard({required this.title, required this.reference, required this.rawStatus});
+  const _ActiveRequestCard({
+    required this.title,
+    required this.reference,
+    required this.rawStatus,
+    required this.deliveryMethod,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final status = _getStatusConfig(rawStatus);
+    final status = _getStatusConfig(rawStatus, deliveryMethod);
     return GlassContainer(
       padding: const EdgeInsets.all(18),
       child: Column(
@@ -415,12 +422,18 @@ class _ActiveRequestCard extends StatelessWidget {
     );
   }
 
-  _StatusData _getStatusConfig(String raw) {
+  _StatusData _getStatusConfig(String raw, String deliveryMethod) {
     final s = raw.toLowerCase();
     
     // 1. RECEIVE / READY
     if (s == 'receive' || s == 'ready') {
-      return const _StatusData('READY', 'Ready for Pickup at Office', 0.95, Color(0xFF0891B2));
+      if (deliveryMethod == 'Pickup') {
+        return const _StatusData('READY', 'Ready for Pickup at Office', 0.95, Color(0xFF0891B2));
+      }
+      if (deliveryMethod == 'CashOnDelivery') {
+        return const _StatusData('READY', 'Ready for Delivery', 0.95, Color(0xFF0891B2));
+      }
+      return const _StatusData('FILE READY', 'Completed file is being finalized', 0.95, Color(0xFF0891B2));
     }
     // 2. APPROVE / APPROVED
     if (s == 'approve' || s == 'approved') {
@@ -428,7 +441,9 @@ class _ActiveRequestCard extends StatelessWidget {
     }
     // 3. IN PROCESS
     if (s == 'inprocess' || s == 'in process' || s == 'processing') {
-      return const _StatusData('IN PROCESS', 'Staff is processing records', 0.50, Color(0xFF1E40AF));
+      return deliveryMethod != 'SoftcopyOnly'
+          ? const _StatusData('PREPARING', 'Printed documents are being prepared', 0.50, Color(0xFF1E40AF))
+          : const _StatusData('IN PROCESS', 'Staff is processing records', 0.50, Color(0xFF1E40AF));
     }
     // 4. DEFAULT: REQUEST / PENDING
     return const _StatusData('REQUESTED', 'Waiting for acknowledgment', 0.25, Color(0xFF64748B));

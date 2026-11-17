@@ -67,9 +67,11 @@ Doctrack-backend-api/
 | GET | `/api/DocumentRequests/{id}` | Authenticated |
 | GET | `/api/DocumentRequests/reference/{ref}` | Public |
 | POST | `/api/DocumentRequests` | Student |
+| POST | `/api/DocumentRequests/{id}/payment` | Admin, Staff (record COD cash payment) |
 | PUT | `/api/DocumentRequests/{id}` | Admin |
 | DELETE | `/api/DocumentRequests/{id}` | Student, Admin |
 | POST | `/api/DocumentRequests/{id}/upload` | Admin |
+| POST | `/api/webhooks/paymongo` | PayMongo webhook signature |
 
 ### Document Types (`/api/DocumentTypes`)
 | Method | Endpoint | Access |
@@ -106,10 +108,30 @@ Doctrack-backend-api/
 
 ## Document Request Status Flow
 ```
-Request → InProcess → Approve → Receive → Download
+Pickup:   Request → Preparing → Approve → Ready for Pickup → Collected
+COD:      Request → Preparing → Approve → Ready for Delivery → Delivered
+Softcopy: Request → In Process → Approve (upload required) → Download
 ```
 - Students can only delete requests in `Request` status
-- Admin moves requests through the workflow
+- Admin moves requests through the appropriate delivery workflow
+- Printed pickup and cash-on-delivery requests do not require a digital document upload
+- Softcopy requests require the completed file before approval and download
+- Cash-on-delivery requests require a delivery address and postal code
+
+## Payments
+
+Printed pickup requests with a processing fee can use cash at the registrar or PayMongo online checkout. Printed cash-on-delivery requests collect the processing fee when delivered and require the student's address and postal code. Softcopy-only requests use PayMongo hosted checkout. Requests with no fee skip payment.
+
+Configure these values with .NET user secrets or environment variables; do not commit real credentials:
+
+```powershell
+dotnet user-secrets set "PayMongo:SecretKey" "sk_test_..."
+dotnet user-secrets set "PayMongo:WebhookSecret" "whsk_..."
+dotnet user-secrets set "PayMongo:SuccessUrl" "http://localhost:5173/dashboard?payment=success"
+dotnet user-secrets set "PayMongo:CancelUrl" "http://localhost:5173/dashboard?payment=cancelled"
+```
+
+In the PayMongo dashboard, register `https://<public-api-host>/api/webhooks/paymongo` and subscribe to `checkout_session.payment.paid`. The webhook secret must belong to the same test/live mode as the configured API key. Apply the EF Core migrations before running the API. PayMongo uses test keys for test transactions; live payments require a verified account and live credentials.
 
 ## Setup
 

@@ -113,7 +113,9 @@ export default function AdminDashboard() {
                   <Stack direction="row" spacing={2} alignItems="center" sx={{ width: { xs: '100%', sm: 'auto' }, justifyContent: { xs: 'space-between', sm: 'flex-end' } }}>
                     <Box sx={{ textAlign: 'right', minWidth: 80 }}>
                       <Typography variant="caption" fontWeight="bold" color="#A3AED0">STATUS</Typography>
-                      <Typography variant="body2" fontWeight="700" color="#1A237E">{req.status}</Typography>
+                      <Typography variant="body2" fontWeight="700" color="#1A237E">
+                        {req.status === 'InProcess' && req.deliveryMethod !== 'SoftcopyOnly' ? 'Preparing' : req.status}
+                      </Typography>
                     </Box>
                     <Stack direction="row" spacing={1}>
                       <IconButton size="small" sx={{ bgcolor: '#EEF2FF' }} title="View Details">

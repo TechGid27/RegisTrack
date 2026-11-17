@@ -85,6 +85,10 @@ namespace Doctrack_backend_api.Migrations
                     b.Property<DateTime?>("CompletedDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("DeliveryAddress")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<string>("DeliveryMethod")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -117,6 +121,9 @@ namespace Doctrack_backend_api.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<decimal>("PaymentAmount")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<string>("PaymentMethod")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -128,6 +135,10 @@ namespace Doctrack_backend_api.Migrations
 
                     b.Property<string>("PaymentStatus")
                         .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("PostalCode")
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
@@ -252,6 +263,9 @@ namespace Doctrack_backend_api.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");

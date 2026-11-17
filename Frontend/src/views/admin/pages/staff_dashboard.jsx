@@ -206,7 +206,9 @@ export default function StaffDashboard() {
                     {new Date(req.requestDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                   </Typography>
                   <Box sx={{ flex: 1 }}>
-                    <Chip label={req.status} size="small"
+                    <Chip
+                      label={req.status === 'InProcess' && req.deliveryMethod !== 'SoftcopyOnly' ? 'Preparing' : req.status}
+                      size="small"
                       sx={{ bgcolor: sc.bg, color: sc.text, fontWeight: 800, fontSize: '0.7rem', borderRadius: '8px' }} />
                   </Box>
                 </Box>

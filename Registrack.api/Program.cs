@@ -18,6 +18,7 @@ builder.Services.AddSingleton<IEmailQueue, EmailQueue>();
 builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddHostedService<EmailWorker>();
+builder.Services.AddHttpClient<PayMongoCheckoutService>();
 
 // Configure JWT Authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
