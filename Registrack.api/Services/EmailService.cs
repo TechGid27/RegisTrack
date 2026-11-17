@@ -55,7 +55,7 @@ public class SmtpEmailSender : IEmailSender
 // Builds email content and enqueues — never blocks the request
 public interface IEmailService
 {
-    void QueueStatusUpdateEmail(string toEmail, string toName, string referenceNumber, string status, string? notes = null, string? attachmentPath = null);
+    void QueueStatusUpdateEmail(string toEmail, string toName, string referenceNumber, string status, string? notes = null, string? attachmentPath = null, string? deliveryMethod = null);
     void QueueRequestConfirmationEmail(string toEmail, string toName, string referenceNumber, string documentType);
     void QueueOtpEmail(string toEmail, string toName, string otp);
 }
@@ -66,15 +66,21 @@ public class EmailService : IEmailService
 
     public EmailService(IEmailQueue queue) => _queue = queue;
 
-    public void QueueStatusUpdateEmail(string toEmail, string toName, string referenceNumber, string status, string? notes = null, string? attachmentPath = null)
+    public void QueueStatusUpdateEmail(string toEmail, string toName, string referenceNumber, string status, string? notes = null, string? attachmentPath = null, string? deliveryMethod = null)
     {
-        var statusMessage = status switch
+        var statusMessage = (status, deliveryMethod) switch
         {
-            "InProcess" => "Your document request is now being processed.",
-            "Approve"   => "Your document request has been approved.",
-            "Receive"   => "Your document is ready for pickup.",
-            "Download"  => "Your document is now available for download.",
-            _           => $"Your document request status has been updated to: {status}."
+            ("InProcess", "Pickup") => "Your printed document request is being prepared for pickup.",
+            ("InProcess", "CashOnDelivery") => "Your printed document request is being prepared for delivery.",
+            ("InProcess", _) => "Your document request is now being processed.",
+            ("Approve", _) => "Your document request has been approved.",
+            ("Receive", "SoftcopyOnly") => "Your softcopy document is ready for download.",
+            ("Receive", "CashOnDelivery") => "Your document is ready for delivery.",
+            ("Receive", _) => "Your document is ready for pickup.",
+            ("Download", "Pickup") => "Your printed document request has been collected and completed.",
+            ("Download", "CashOnDelivery") => "Your printed document has been delivered and completed.",
+            ("Download", _) => "Your document is now available for download.",
+            _ => $"Your document request status has been updated to: {status}."
         };
 
         var body = $@"

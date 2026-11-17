@@ -22,6 +22,12 @@ public class User
     [Required]
     [StringLength(50)]
     public string StudentId { get; set; } = string.Empty;
+
+    [StringLength(20)]
+    public string? AcademicLevel { get; set; }
+
+    [StringLength(100)]
+    public string? CourseProgram { get; set; }
     
     [Required]
     [StringLength(20)]

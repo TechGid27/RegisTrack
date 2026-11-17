@@ -21,5 +21,11 @@
     "Password": "REPLACE_WITH_SMTP_PASSWORD",
     "FromEmail": "gideonayao29@gmail.com",
     "FromName": "DocTrack System"
+  },
+  "PayMongo": {
+    "SecretKey": "",
+    "WebhookSecret": "",
+    "SuccessUrl": "http://localhost:5173/dashboard?payment=success",
+    "CancelUrl": "http://localhost:5173/dashboard?payment=cancelled"
   }
 }

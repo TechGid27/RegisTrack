@@ -18,6 +18,7 @@ builder.Services.AddSingleton<IEmailQueue, EmailQueue>();
 builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddHostedService<EmailWorker>();
+builder.Services.AddHttpClient<PayMongoCheckoutService>();
 
 // Configure JWT Authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -59,6 +60,7 @@ builder.Services.AddCors(options =>
         policy.SetIsOriginAllowed(origin => true)
               .AllowAnyMethod()
               .AllowAnyHeader()
+              .WithExposedHeaders("Content-Disposition")
               .AllowCredentials();
     });
 });
@@ -84,11 +86,12 @@ app.UseCors("AllowAll");
 app.UseStaticFiles(); // serves wwwroot
 
 // serve uploaded documents from /uploads/documents/
+Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(), "uploads", "documents"));
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
-        Path.Combine(Directory.GetCurrentDirectory(), "uploads")),
-    RequestPath = "/uploads"
+        Path.Combine(Directory.GetCurrentDirectory(), "uploads", "documents")),
+    RequestPath = "/uploads/documents"
 });
 
 app.UseAuthentication();

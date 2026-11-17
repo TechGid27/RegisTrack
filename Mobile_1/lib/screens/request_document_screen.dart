@@ -27,9 +27,12 @@ class _RequestDocumentScreenState extends State<RequestDocumentScreen> {
   final _formKey = GlobalKey<FormState>();
   int? _selectedDocumentTypeId;
   String? _selectedPurpose;
+  String? _selectedDeliveryMethod;
   final _purposeOtherController = TextEditingController();
   final _copiesController = TextEditingController(text: '1');
   final _notesController = TextEditingController();
+  final _deliveryAddressController = TextEditingController();
+  final _postalCodeController = TextEditingController();
   final ValueNotifier<bool> _isLoading = ValueNotifier<bool>(false);
   List<dynamic> _documentTypes = [];
 
@@ -44,6 +47,8 @@ class _RequestDocumentScreenState extends State<RequestDocumentScreen> {
     _purposeOtherController.dispose();
     _copiesController.dispose();
     _notesController.dispose();
+    _deliveryAddressController.dispose();
+    _postalCodeController.dispose();
     _isLoading.dispose();
     super.dispose();
   }
@@ -110,6 +115,51 @@ class _RequestDocumentScreenState extends State<RequestDocumentScreen> {
                               value == null ? 'Please select a document' : null,
                         ),
                         const SizedBox(height: 16),
+
+                        DropdownButtonFormField<String>(
+                          value: _selectedDeliveryMethod,
+                          decoration: const InputDecoration(
+                            labelText: 'How would you like to receive your documents?',
+                            prefixIcon: Icon(Icons.local_shipping_outlined),
+                          ),
+                          items: const [
+                            DropdownMenuItem(value: 'Pickup', child: Text('Pick up printed documents')),
+                            DropdownMenuItem(value: 'CashOnDelivery', child: Text('Cash on delivery')),
+                            DropdownMenuItem(value: 'SoftcopyOnly', child: Text('Softcopy only')),
+                          ],
+                          onChanged: (value) => setState(() => _selectedDeliveryMethod = value),
+                          validator: (value) => value == null ? 'Choose a delivery method' : null,
+                        ),
+                        const SizedBox(height: 16),
+
+                        if (_selectedDeliveryMethod == 'CashOnDelivery') ...[
+                          TextFormField(
+                            controller: _deliveryAddressController,
+                            maxLines: 3,
+                            decoration: const InputDecoration(
+                              labelText: 'Delivery address',
+                              hintText: 'House/building, street, barangay, city, province',
+                              prefixIcon: Icon(Icons.home_outlined),
+                              alignLabelWithHint: true,
+                            ),
+                            validator: (value) => value == null || value.trim().isEmpty
+                                ? 'Delivery address is required'
+                                : null,
+                          ),
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: _postalCodeController,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: 'Postal code',
+                              prefixIcon: Icon(Icons.local_post_office_outlined),
+                            ),
+                            validator: (value) => value == null || value.trim().isEmpty
+                                ? 'Postal code is required'
+                                : null,
+                          ),
+                          const SizedBox(height: 16),
+                        ],
 
                         // Number of Copies
                         TextFormField(
@@ -247,9 +297,17 @@ class _RequestDocumentScreenState extends State<RequestDocumentScreen> {
         'purpose': finalPurpose,
         'quantity': int.parse(_copiesController.text),
         'notes': _notesController.text.trim(),
+        'deliveryMethod': _selectedDeliveryMethod,
+        if (_selectedDeliveryMethod == 'CashOnDelivery') ...{
+          'address': _deliveryAddressController.text.trim(),
+          'postalCode': _postalCodeController.text.trim(),
+          'paymentMethod': 'COD',
+        },
       };
 
-      final result = await ApiService.createDocumentRequest(requestData);
+      final result = await ApiService.createDocumentRequest(
+        requestData,
+      );
 
       if (!mounted) return;
 
@@ -263,6 +321,7 @@ class _RequestDocumentScreenState extends State<RequestDocumentScreen> {
           ),
         );
       }
+
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

@@ -23,7 +23,7 @@ export const RequestProvider = ({ children }) => {
         : await requestService.getAll();
       setRequests(data);
       setError(null);
-    } catch (err) {
+    } catch {
       setError("Invalid request");
     } finally {
       setLoading(false);
@@ -48,15 +48,26 @@ export const RequestProvider = ({ children }) => {
   }, [user, loadRequests]);
 
   const handleRequestUpdated = useCallback((data) => {
-    // Student receives status update — merge all fields including documentUrl
+    if (user?.role === 'Student') {
+      loadRequests(user.id);
+      return;
+    }
+
+    // Staff and admins merge workflow and payment updates into loaded requests.
     setRequests(prev =>
       prev.map(req =>
         req.id === data.id
-          ? { ...req, status: data.status, updatedAt: data.updatedAt, ...(data.documentUrl && { documentUrl: data.documentUrl }) }
+          ? {
+              ...req,
+              status: data.status,
+              updatedAt: data.updatedAt,
+              ...(data.paymentStatus && { paymentStatus: data.paymentStatus }),
+              ...(data.documentUrl && { documentUrl: data.documentUrl })
+            }
           : req
       )
     );
-  }, []);
+  }, [user, loadRequests]);
 
   // Handlers for announcements, document types, requirements
   const handleAnnouncementChange = useCallback((data, action) => {
@@ -96,7 +107,9 @@ export const RequestProvider = ({ children }) => {
   const createRequest = useCallback(async (data) => {
     try {
       const newReq = await requestService.create(data);
-      setRequests(prev => [newReq, ...prev]);
+      if (newReq?.id) {
+        setRequests(prev => [newReq, ...prev]);
+      }
       return newReq;
     } catch (err) {
       console.error("Create failed:", err);
@@ -122,6 +135,16 @@ export const RequestProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  const markPaymentReceived = useCallback(async (id) => {
+    const result = await requestService.markPaymentReceived(id);
+    setRequests(prev => prev.map(req =>
+      String(req.id) === String(id)
+        ? { ...req, paymentStatus: result.paymentStatus }
+        : req
+    ));
+    return result;
   }, []);
 
   // 4. Upload logic
@@ -173,10 +196,11 @@ export const RequestProvider = ({ children }) => {
     loadRequests,
     createRequest,
     updateRequestStatus, 
+    markPaymentReceived,
     uploadDocument,
     deleteRequest,
     trackByReference
-  }), [requests, loading, error, newRequestNotification, loadRequests, createRequest, updateRequestStatus, uploadDocument, deleteRequest, trackByReference]);
+  }), [requests, loading, error, newRequestNotification, loadRequests, createRequest, updateRequestStatus, markPaymentReceived, uploadDocument, deleteRequest, trackByReference]);
 
   return (
     <RequestContext.Provider value={value}>

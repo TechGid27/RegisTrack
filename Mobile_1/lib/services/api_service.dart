@@ -343,20 +343,27 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> createDocumentRequest(Map<String, dynamic> requestData) async {
+  static Future<Map<String, dynamic>> createDocumentRequest(
+    Map<String, dynamic> requestData,
+  ) async {
     try {
       final headers = await _getHeaders();
-      final response = await _client
-          .post(
-            Uri.parse('${ApiConfig.baseUrl}${ApiConfig.documentRequests}'),
-            headers: headers,
-            body: json.encode(requestData),
-          )
-          .timeout(_timeout);
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return {'success': true, 'data': await _decodeJson(response.body)};
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.documentRequests}'),
+      );
+      if (headers.containsKey('Authorization')) {
+        request.headers['Authorization'] = headers['Authorization']!;
       }
-      return {'success': false, 'message': 'Failed to create request'};
+      request.fields.addAll(requestData.map((key, value) => MapEntry(key, value.toString())));
+
+      final streamedResponse = await request.send().timeout(_timeout);
+      final responseBody = await streamedResponse.stream.bytesToString();
+      if (streamedResponse.statusCode == 200 || streamedResponse.statusCode == 201) {
+        return {'success': true, 'data': json.decode(responseBody)};
+      }
+      final body = responseBody.isNotEmpty ? json.decode(responseBody) : {};
+      return {'success': false, 'message': body['message'] ?? 'Failed to create request'};
     } on TimeoutException {
       return {'success': false, 'message': 'Request timed out'};
     } catch (e) {

@@ -17,7 +17,7 @@ import { BASE_HOST } from '../../../api/Client';
 function UpdateRequest({ idFromProp, onClose, isModal }) {
   const { id: idFromUrl } = useParams();
   const navigate = useNavigate();
-  const { requests, updateRequestStatus, uploadDocument, loadRequests, loading: contextLoading } = UseRequests();
+  const { requests, updateRequestStatus, markPaymentReceived, uploadDocument, loadRequests, loading: contextLoading } = UseRequests();
 
   const activeId = idFromProp || idFromUrl;
   const [loading, setLoading] = useState(false);
@@ -28,8 +28,6 @@ function UpdateRequest({ idFromProp, onClose, isModal }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  const steps = ['Request', 'InProcess', 'Approve', 'Receive', 'Download'];
-
   useEffect(() => {
     if (requests.length === 0) loadRequests();
   }, [loadRequests, requests.length]);
@@ -38,6 +36,13 @@ function UpdateRequest({ idFromProp, onClose, isModal }) {
     requests.find(r => String(r.id) === String(activeId)),
     [requests, activeId]
   );
+
+  const steps = useMemo(() => {
+    if (selectedRequest?.deliveryMethod === 'SoftcopyOnly' && selectedRequest.status !== 'Receive') {
+      return ['Request', 'InProcess', 'Approve', 'Download'];
+    }
+    return ['Request', 'InProcess', 'Approve', 'Receive', 'Download'];
+  }, [selectedRequest]);
 
   useEffect(() => {
     if (selectedRequest) {
@@ -52,7 +57,7 @@ function UpdateRequest({ idFromProp, onClose, isModal }) {
     if (!selectedRequest) return [];
     const currentIndex = steps.indexOf(selectedRequest.status);
     return steps.filter((_, i) => i === currentIndex || i === currentIndex + 1);
-  }, [selectedRequest]);
+  }, [selectedRequest, steps]);
 
   const handleFileChange = (e) => { setSelectedFile(e.target.files[0]); setError(''); };
   const handleDragOver = useCallback((e) => { e.preventDefault(); setIsDragging(true); }, []);
@@ -65,8 +70,10 @@ function UpdateRequest({ idFromProp, onClose, isModal }) {
 
   const handleFullUpdate = async () => {
     setLoading(true); setError(''); setSuccess('');
-    if (['Approve', 'Download'].includes(selectedStatus) && !isUploaded && !selectedFile) {
-      setError("Required: Palihog upload og document.");
+    const requiresUpload = selectedRequest.deliveryMethod === 'SoftcopyOnly'
+      && ['Approve', 'Download'].includes(selectedStatus);
+    if (requiresUpload && !isUploaded && !selectedFile) {
+      setError('Upload the completed document before approving or completing a softcopy request.');
       setLoading(false); return;
     }
     try {
@@ -81,6 +88,21 @@ function UpdateRequest({ idFromProp, onClose, isModal }) {
       if (isModal) setTimeout(() => onClose(), 1500);
     } catch (err) {
       setError(err.message || "Server Error.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePaymentReceived = async () => {
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      await markPaymentReceived(activeId);
+      setSuccess('Cash payment recorded.');
+      await loadRequests();
+    } catch (err) {
+      setError(err.message || 'Unable to record the cash payment.');
     } finally {
       setLoading(false);
     }
@@ -105,12 +127,32 @@ function UpdateRequest({ idFromProp, onClose, isModal }) {
       {/* Stepper */}
       <Paper elevation={0} sx={{ p: { xs: 2, sm: 3 }, borderRadius: '20px', border: '1px solid #E0E5F2', mb: 3 }}>
         <Stepper
-          activeStep={steps.indexOf(selectedRequest.status)}
+          activeStep={Math.max(0, steps.indexOf(selectedRequest.status))}
           alternativeLabel
           sx={{ '& .MuiStepLabel-label': { fontSize: { xs: '0.65rem', sm: '0.75rem' } } }}
         >
-          {steps.map((label) => (
-            <Step key={label}><StepLabel>{label}</StepLabel></Step>
+          {steps.map((step) => (
+            <Step key={step}>
+              <StepLabel>
+                  {step === 'InProcess'
+                  ? selectedRequest.deliveryMethod !== 'SoftcopyOnly' ? 'Preparing' : 'In Process'
+                  : step === 'Approve'
+                    ? 'Approved'
+                    : step === 'Receive'
+                      ? selectedRequest.deliveryMethod === 'Pickup'
+                        ? 'Ready for Pickup'
+                        : selectedRequest.deliveryMethod === 'CashOnDelivery'
+                          ? 'Ready for Delivery'
+                          : 'File Ready'
+                      : step === 'Download'
+                        ? selectedRequest.deliveryMethod === 'Pickup'
+                          ? 'Collected'
+                          : selectedRequest.deliveryMethod === 'CashOnDelivery'
+                            ? 'Delivered'
+                            : 'Available for Download'
+                        : 'Request Submitted'}
+              </StepLabel>
+            </Step>
           ))}
         </Stepper>
       </Paper>
@@ -136,6 +178,43 @@ function UpdateRequest({ idFromProp, onClose, isModal }) {
                 <Typography variant="caption" color="#707EAE" fontWeight="800">PURPOSE</Typography>
                 <Typography variant="body2" sx={{ mt: 0.5 }}>{selectedRequest.purpose || 'N/A'}</Typography>
               </Box>
+              <Divider />
+              <Box>
+                <Typography variant="caption" color="#707EAE" fontWeight="800">DELIVERY</Typography>
+                <Typography variant="body2">
+                  {selectedRequest.deliveryMethod === 'SoftcopyOnly'
+                    ? 'Softcopy only'
+                    : selectedRequest.deliveryMethod === 'CashOnDelivery'
+                      ? 'Cash on delivery (printed delivery)'
+                      : 'Pick up printed documents'}
+                </Typography>
+                {selectedRequest.deliveryMethod === 'CashOnDelivery' && (
+                  <Box sx={{ mt: 1 }}>
+                    <Typography variant="caption" color="#707EAE" fontWeight="800">DELIVERY ADDRESS</Typography>
+                    <Typography variant="body2">{selectedRequest.address}</Typography>
+                    <Typography variant="body2">Postal code: {selectedRequest.postalCode}</Typography>
+                  </Box>
+                )}
+              </Box>
+              <Divider />
+              <Box>
+                <Typography variant="caption" color="#707EAE" fontWeight="800">PAYMENT</Typography>
+                <Typography variant="body2">
+                  {selectedRequest.paymentMethod || 'None'} · {selectedRequest.paymentStatus || 'NotRequired'}
+                  {selectedRequest.paymentAmount > 0 && ` · ₱${Number(selectedRequest.paymentAmount).toLocaleString()}`}
+                </Typography>
+                {selectedRequest.paymentMethod === 'COD' && selectedRequest.paymentStatus === 'Pending' && (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    disabled={loading}
+                    onClick={handlePaymentReceived}
+                    sx={{ mt: 1, textTransform: 'none' }}
+                  >
+                    Mark cash received
+                  </Button>
+                )}
+              </Box>
             </Stack>
           </Card>
 
@@ -154,7 +233,11 @@ function UpdateRequest({ idFromProp, onClose, isModal }) {
                 </Button>
               </Stack>
             ) : (
-              <Typography variant="caption" color="text.secondary">No document uploaded.</Typography>
+              <Typography variant="caption" color="text.secondary">
+                {selectedRequest.deliveryMethod !== 'SoftcopyOnly'
+                  ? 'No digital upload is required for printed requests.'
+                  : 'No document uploaded.'}
+              </Typography>
             )}
           </Card>
         </Stack>
@@ -168,7 +251,29 @@ function UpdateRequest({ idFromProp, onClose, isModal }) {
               onChange={(e) => setSelectedStatus(e.target.value)}
               sx={{ '& .MuiOutlinedInput-root': { borderRadius: '14px' } }}
             >
-              {availableOptions.map((o) => <MenuItem key={o} value={o}>{o}</MenuItem>)}
+              {availableOptions.map((o) => (
+                <MenuItem key={o} value={o}>
+                  {o === 'InProcess' && selectedRequest.deliveryMethod !== 'SoftcopyOnly'
+                    ? 'Preparing'
+                    : o === 'InProcess'
+                      ? 'In Process'
+                      : o === 'Receive' && selectedRequest.deliveryMethod === 'Pickup'
+                        ? 'Ready for Pickup'
+                        : o === 'Receive' && selectedRequest.deliveryMethod === 'CashOnDelivery'
+                          ? 'Ready for Delivery'
+                          : o === 'Receive'
+                            ? 'File Ready'
+                          : o === 'Approve'
+                            ? 'Approved'
+                            : o === 'Download'
+                              ? selectedRequest.deliveryMethod === 'Pickup'
+                                ? 'Collected'
+                                : selectedRequest.deliveryMethod === 'CashOnDelivery'
+                                  ? 'Delivered'
+                                  : 'Available for Download'
+                              : 'Request Submitted'}
+                </MenuItem>
+              ))}
             </TextField>
 
             <TextField
@@ -178,8 +283,7 @@ function UpdateRequest({ idFromProp, onClose, isModal }) {
               sx={{ '& .MuiOutlinedInput-root': { borderRadius: '14px' } }}
             />
 
-            {/* Upload zone */}
-            <Box
+            {selectedRequest.deliveryMethod === 'SoftcopyOnly' && <Box
               onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
               sx={{
                 p: { xs: 2, sm: 3 },
@@ -215,7 +319,12 @@ function UpdateRequest({ idFromProp, onClose, isModal }) {
                   </Typography>
                 </Stack>
               )}
-            </Box>
+            </Box>}
+            {selectedRequest.deliveryMethod !== 'SoftcopyOnly' && (
+              <Alert severity="info">
+                Printed delivery requests do not require a digital document upload.
+              </Alert>
+            )}
 
             <Button variant="contained" fullWidth onClick={handleFullUpdate} disabled={loading}
               sx={{ bgcolor: '#1A237E', borderRadius: '14px', py: 1.75, fontWeight: 800, fontSize: '0.875rem', '&:hover': { bgcolor: '#311B92' } }}>

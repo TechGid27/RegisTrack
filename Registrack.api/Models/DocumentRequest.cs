@@ -28,6 +28,35 @@ public class DocumentRequest
     
     [StringLength(2000)]
     public string Notes { get; set; } = string.Empty;
+
+    [Required]
+    [StringLength(20)]
+    public string DeliveryMethod { get; set; } = string.Empty;
+
+    [StringLength(500)]
+    public string? DeliveryAddress { get; set; }
+
+    [StringLength(20)]
+    public string? PostalCode { get; set; }
+
+    [Required]
+    [StringLength(20)]
+    public string PaymentMethod { get; set; } = "None";
+
+    [Required]
+    [StringLength(20)]
+    public string PaymentStatus { get; set; } = "NotRequired";
+
+    public decimal PaymentAmount { get; set; }
+
+    [StringLength(100)]
+    public string? PayMongoCheckoutSessionId { get; set; }
+
+    [StringLength(500)]
+    public string? PayMongoCheckoutUrl { get; set; }
+
+    [StringLength(255)]
+    public string? PaymentReceiptFileName { get; set; }
     
     public DateTime RequestDate { get; set; } = DateTime.UtcNow;
     

@@ -12,7 +12,9 @@ import * as Yup from 'yup';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 
-const logo = '/LogoFinal.png';
+const logo = '/901975676_1461006332657415_7870701664435826141_n.png'; // I-adjust ang path base sa imong folder structure
+const logo1 = '/LogoFinal.png';
+
 
 const validationSchema = Yup.object({
   email: Yup.string().email('Enter a valid email').required('Email is required'),
@@ -86,11 +88,12 @@ const Login = () => {
             <Box
               component="img"
               src={logo}
-              alt="RegisTrack"
-              sx={{ width: '100%', height: 120, objectFit: 'cover' }}
+              alt="ACLC College of Mandaue"
+              sx={{ width: '50%', height: "100%", objectFit: 'cover' }}
             />
+
             <Typography variant="h3" fontWeight={900} sx={{ letterSpacing: '-1px' }}>
-              RegisTrack
+              ACLC College of Mandaue
             </Typography>
             <Typography variant="h6" sx={{ textAlign: 'center', maxWidth: 420, opacity: 0.85, fontWeight: 400 }}>
               Ang modernong paagi sa pag-request ug pag-track sa imong academic documents.
@@ -126,12 +129,12 @@ const Login = () => {
             <Box sx={{ display: { xs: 'block', md: 'none' }, textAlign: 'center', mb: 4 }}>
               <Box
                 component="img"
-                src="/LogoPurple.png"
-                alt="RegisTrack"
-                sx={{ width: 80, height: 80, objectFit: 'contain', mb: 1 }}
+                src={logo}
+                alt="ACLC College of Mandaue"
+                sx={{ width: "100%", height: 80, objectFit: 'contain', mb: 1 }}
               />
               <Typography variant="h5" fontWeight={900} color="#1A237E">
-                RegisTrack
+                ACLC College of Mandaue
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                 Academic Document Tracking System

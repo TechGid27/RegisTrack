@@ -59,6 +59,8 @@ public class UserResponseDto
     public string StudentId { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
     public string? Department { get; set; }
+    public string? AcademicLevel { get; set; }
+    public string? CourseProgram { get; set; }
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
 }

@@ -21,7 +21,9 @@ Content-Type: application/json
   "firstName": "John",
   "lastName": "Doe",
   "email": "john.doe@aclc.edu.ph",
-  "studentId": "STU-2024-001",
+  "studentId": "27000000001",
+  "academicLevel": "College",
+  "courseProgram": "BS Information Technology",
   "password": "SecurePass123!",
   "confirmPassword": "SecurePass123!"
 }
@@ -52,7 +54,9 @@ Content-Type: application/json
   "firstName": "Jane",
   "lastName": "Smith",
   "email": "john.doe@aclc.edu.ph",
-  "studentId": "STU-2024-002",
+  "studentId": "27000000002",
+  "academicLevel": "College",
+  "courseProgram": "BS Information Technology",
   "password": "SecurePass123!",
   "confirmPassword": "SecurePass123!"
 }
@@ -65,7 +69,8 @@ Content-Type: application/json
   "firstName": "Jane",
   "lastName": "Smith",
   "email": "jane.smith@aclc.edu.ph",
-  "studentId": "STU-2024-003",
+  "studentId": "27000000003",
+  "academicLevel": "SeniorHigh",
   "password": "SecurePass123!",
   "confirmPassword": "DifferentPass123!"
 }
@@ -82,7 +87,7 @@ Content-Type: application/json
   "firstName": "John",
   "lastName": "Doe",
   "email": "john.doe@aclc.edu.ph",
-  "studentId": "STU-2024-001",
+  "studentId": "27000000001",
   "password": "SecurePass123!",
   "role": "Student"
 }
@@ -95,7 +100,7 @@ Content-Type: application/json
   "firstName": "Admin",
   "lastName": "User",
   "email": "admin@aclc.edu.ph",
-  "studentId": "ADM-2024-001",
+  "studentId": "27000000004",
   "password": "AdminPass123!",
   "role": "Admin"
 }
@@ -258,26 +263,15 @@ DELETE {{baseUrl}}/DocumentRequirements/{{requirementId}}
 
 ### 26. Create document request
 POST {{baseUrl}}/DocumentRequests
-Content-Type: application/json
+Content-Type: application/x-www-form-urlencoded
 
-{
-  "userId": 1,
-  "documentTypeId": 1,
-  "purpose": "Job application requirements for ABC Company",
-  "quantity": 2,
-  "notes": "Please expedite if possible"
-}
+userId=1&documentTypeId=1&purpose=Job%20application%20requirements%20for%20ABC%20Company&quantity=2&notes=Please%20expedite%20if%20possible&deliveryMethod=Pickup
 
 ### 27. Create another request
 POST {{baseUrl}}/DocumentRequests
-Content-Type: application/json
+Content-Type: application/x-www-form-urlencoded
 
-{
-  "userId": 1,
-  "documentTypeId": 2,
-  "purpose": "Scholarship application for XYZ Foundation",
-  "quantity": 1
-}
+userId=1&documentTypeId=2&purpose=Scholarship%20application%20for%20XYZ%20Foundation&quantity=1&deliveryMethod=SoftcopyOnly
 
 ### 28. Get all document requests
 GET {{baseUrl}}/DocumentRequests
@@ -450,25 +444,15 @@ Content-Type: application/json
 
 ### 51. Create document request with invalid purpose (too short)
 POST {{baseUrl}}/DocumentRequests
-Content-Type: application/json
+Content-Type: application/x-www-form-urlencoded
 
-{
-  "userId": 1,
-  "documentTypeId": 1,
-  "purpose": "Short",
-  "quantity": 1
-}
+userId=1&documentTypeId=1&purpose=Short&quantity=1&deliveryMethod=Pickup
 
 ### 52. Create document request with invalid quantity
 POST {{baseUrl}}/DocumentRequests
-Content-Type: application/json
+Content-Type: application/x-www-form-urlencoded
 
-{
-  "userId": 1,
-  "documentTypeId": 1,
-  "purpose": "Valid purpose for testing",
-  "quantity": 150
-}
+userId=1&documentTypeId=1&purpose=Valid%20purpose%20for%20testing&quantity=150&deliveryMethod=Pickup
 
 ### 53. Create announcement with past expiry date
 POST {{baseUrl}}/Announcements
@@ -495,7 +479,7 @@ Content-Type: application/json
   "firstName": "Maria",
   "lastName": "Santos",
   "email": "maria.santos@aclc.edu.ph",
-  "studentId": "STU-2024-100",
+  "studentId": "27000000005",
   "password": "MariaPass123!",
   "role": "Student"
 }
@@ -525,15 +509,9 @@ Content-Type: application/json
 
 ### Step 4: Create request
 POST {{baseUrl}}/DocumentRequests
-Content-Type: application/json
+Content-Type: application/x-www-form-urlencoded
 
-{
-  "userId": 3,
-  "documentTypeId": 4,
-  "purpose": "Transfer to another institution",
-  "quantity": 1,
-  "notes": "Needed urgently for enrollment deadline"
-}
+userId=3&documentTypeId=4&purpose=Transfer%20to%20another%20institution&quantity=1&notes=Needed%20urgently%20for%20enrollment%20deadline&deliveryMethod=Pickup
 
 ### Step 5: Process the request through all statuses
 # (Use the reference number from Step 4 response)

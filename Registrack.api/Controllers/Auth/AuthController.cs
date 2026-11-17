@@ -35,6 +35,9 @@ public class AuthController : ControllerBase
         if (await _context.Users.AnyAsync(u => u.StudentId == dto.StudentId))
             return BadRequest(new { message = "Student ID already exists" });
 
+        if (dto.AcademicLevel == "College" && string.IsNullOrWhiteSpace(dto.CourseProgram))
+            return BadRequest(new { message = "Course or program is required for college students" });
+
         var otp = GenerateOtp();
 
         var user = new User
@@ -43,6 +46,8 @@ public class AuthController : ControllerBase
             LastName = dto.LastName,
             Email = dto.Email,
             StudentId = dto.StudentId,
+            AcademicLevel = dto.AcademicLevel,
+            CourseProgram = dto.AcademicLevel == "College" ? dto.CourseProgram!.Trim() : null,
             PasswordHash = HashPassword(dto.Password),
             Role = "Student",
             IsActive = true,
@@ -239,6 +244,8 @@ public class AuthController : ControllerBase
             LastName = user.LastName,
             Email = user.Email,
             StudentId = user.StudentId,
+            AcademicLevel = user.AcademicLevel,
+            CourseProgram = user.CourseProgram,
             Role = user.Role,
             IsActive = user.IsActive,
             CreatedAt = user.CreatedAt

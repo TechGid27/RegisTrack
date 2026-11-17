@@ -22,6 +22,20 @@ public class CreateDocumentRequestDto
     
     [StringLength(2000, ErrorMessage = "Notes cannot exceed 2000 characters")]
     public string? Notes { get; set; }
+
+    [Required]
+    [RegularExpression("^(Pickup|CashOnDelivery|SoftcopyOnly)$", ErrorMessage = "Delivery method must be Pickup, CashOnDelivery, or SoftcopyOnly")]
+    public string DeliveryMethod { get; set; } = string.Empty;
+
+    [StringLength(500)]
+    public string? Address { get; set; }
+
+    [StringLength(20)]
+    public string? PostalCode { get; set; }
+
+    [RegularExpression("^(PayMongo|COD|None)$", ErrorMessage = "Payment method must be PayMongo or COD")]
+    public string? PaymentMethod { get; set; }
+
 }
 
 public class UpdateDocumentRequestDto
@@ -57,6 +71,12 @@ public class DocumentRequestResponseDto
     public int Copies => Quantity;
     public string Purpose { get; set; } = string.Empty;
     public string Notes { get; set; } = string.Empty;
+    public string DeliveryMethod { get; set; } = string.Empty;
+    public string? Address { get; set; }
+    public string? PostalCode { get; set; }
+    public string PaymentMethod { get; set; } = string.Empty;
+    public string PaymentStatus { get; set; } = string.Empty;
+    public decimal PaymentAmount { get; set; }
     public DateTime RequestDate { get; set; }
     public DateTime? ProcessedDate { get; set; }
     public DateTime? ApprovedDate { get; set; }

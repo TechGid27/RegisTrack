@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import {
   Box, Container, Paper, Typography, TextField,
-  Button, Link as MuiLink, Stack, CircularProgress, Alert,
+  Button, Link as MuiLink, Stack, CircularProgress, Alert, MenuItem,
   InputAdornment, IconButton
 } from '@mui/material';
 import { Link, useNavigate } from 'react-router-dom';
@@ -11,15 +11,19 @@ import { UseAuth } from '../../context/AuthContext';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 
-const logo = '/LogoFinal.png';
-
 const validationSchema = Yup.object({
   firstName: Yup.string().required('First name is required'),
   lastName: Yup.string().required('Last name is required'),
   email: Yup.string()
     .matches(/^[a-zA-Z0-9._%+-]+@gmail\.com$/, 'Must be a valid Gmail address (@gmail.com)')
     .required('Email is required'),
-  studentId: Yup.string().min(5, 'At least 5 characters').required('Student ID is required'),
+  studentId: Yup.string().matches(/^\d{11}$/, 'Student number must be exactly 11 digits').required('Student number is required'),
+  academicLevel: Yup.string().oneOf(['SeniorHigh', 'College']).required('Select your level'),
+  courseProgram: Yup.string().when('academicLevel', {
+    is: 'College',
+    then: (schema) => schema.required('Course or program is required'),
+    otherwise: (schema) => schema,
+  }),
   password: Yup.string().min(8, 'At least 8 characters').required('Password is required'),
   confirmPassword: Yup.string()
     .oneOf([Yup.ref('password'), null], 'Passwords must match')
@@ -27,7 +31,7 @@ const validationSchema = Yup.object({
 });
 
 // Reusable field — supports password toggle
-const FormInput = React.memo(({ name, label, type = 'text', showPw, togglePw, ...props }) => (
+const FormInput = React.memo(({ name, label, type = 'text', showPw, togglePw, helperText, ...props }) => (
   <FastField name={name}>
     {({ field, meta }) => (
       <TextField
@@ -38,7 +42,7 @@ const FormInput = React.memo(({ name, label, type = 'text', showPw, togglePw, ..
         label={label}
         type={type === 'password' ? (showPw ? 'text' : 'password') : type}
         error={meta.touched && Boolean(meta.error)}
-        helperText={meta.touched ? meta.error : ''}
+        helperText={meta.touched && meta.error ? meta.error : helperText || ''}
         InputProps={
           type === 'password'
             ? {
@@ -217,7 +221,7 @@ const Register = () => {
           {error && <Alert severity="error" sx={{ mb: 2.5, borderRadius: 2 }}>{error}</Alert>}
 
           <Formik
-            initialValues={{ firstName: '', lastName: '', email: '', studentId: '', password: '', confirmPassword: '' }}
+            initialValues={{ firstName: '', lastName: '', email: '', studentId: '', academicLevel: '', courseProgram: '', password: '', confirmPassword: '' }}
             validationSchema={validationSchema}
             validateOnChange={false}
             validateOnBlur
@@ -236,7 +240,7 @@ const Register = () => {
               }
             }}
           >
-            {({ handleSubmit }) => (
+            {({ handleSubmit, values }) => (
               <Box component="form" onSubmit={handleSubmit} noValidate>
                 <Stack spacing={2}>
 
@@ -246,7 +250,20 @@ const Register = () => {
                     <FormInput name="lastName" label="Last Name" />
                   </Stack>
 
-                  <FormInput name="studentId" label="Student ID" placeholder="e.g. 2024-0001" />
+                  <FormInput
+                    name="studentId"
+                    label="11-Digit AMA Universal Student Number"
+                    placeholder="e.g. 24001234567"
+                    inputProps={{ inputMode: 'numeric', maxLength: 11 }}
+                    helperText="Enter your AMA-assigned number: first 2 digits are the profile year, then 00, then your 7-digit registration number."
+                  />
+                  <FormInput name="academicLevel" label="Academic Level" select>
+                    <MenuItem value="SeniorHigh">Senior High School</MenuItem>
+                    <MenuItem value="College">College</MenuItem>
+                  </FormInput>
+                  {values.academicLevel === 'College' && (
+                    <FormInput name="courseProgram" label="Course / Program" />
+                  )}
                   <FormInput name="email" label="Email Address" type="email" />
 
                   <FormInput
